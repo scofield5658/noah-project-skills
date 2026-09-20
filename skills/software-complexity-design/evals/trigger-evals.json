@@ -1,0 +1,70 @@
+[
+  {
+    "query": "We are splitting a long-running settlement workflow across three services. Help decide who owns the state machine, idempotency, rollback, and end-of-day completion.",
+    "should_trigger": true
+  },
+  {
+    "query": "Compare keeping feed normalization in the core service versus creating a preprocessing service used by several downstream systems.",
+    "should_trigger": true
+  },
+  {
+    "query": "Review this architecture: clients call six APIs in order and must interpret internal error states before retrying or compensating.",
+    "should_trigger": true
+  },
+  {
+    "query": "Map an event-driven workflow from ingestion through processing, reconciliation, rerun, and operational closeout, including ownership and recovery.",
+    "should_trigger": true
+  },
+  {
+    "query": "A package is loaded by multiple runtimes and nobody agrees which service owns the business state. Help establish evidence and boundaries.",
+    "should_trigger": true
+  },
+  {
+    "query": "Create a practical review guide for spotting wide change propagation, duplicated design knowledge, fragile recovery, and costly service boundaries.",
+    "should_trigger": true
+  },
+  {
+    "query": "Our TDD scenarios need to orchestrate many low-level APIs and mock several internal states. Help redesign the behavior contract and ownership before we continue implementation.",
+    "should_trigger": true
+  },
+  {
+    "query": "Plan an incremental architecture evolution for a large platform where every new scenario adds branches across scheduling, state, monitoring, and operations.",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我评审这条跨模块日终链路，重点看状态由谁维护、失败后从哪里重跑，以及新增服务是否真的降低复杂性。",
+    "should_trigger": true
+  },
+  {
+    "query": "Review one function that formats order notes and suggest clearer local names.",
+    "should_trigger": false
+  },
+  {
+    "query": "Review this SQL query and suggest indexes to reduce its execution time.",
+    "should_trigger": false
+  },
+  {
+    "query": "Write unit tests for this retry helper and mock the HTTP client.",
+    "should_trigger": false
+  },
+  {
+    "query": "Create a sequence diagram from this already-approved API contract without changing the architecture.",
+    "should_trigger": false
+  },
+  {
+    "query": "Rename these DTO fields and update the JSON serialization annotations.",
+    "should_trigger": false
+  },
+  {
+    "query": "Should this one method be split into three private methods for readability?",
+    "should_trigger": false
+  },
+  {
+    "query": "Draft database columns and validation rules for a single-module CRUD screen.",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我给一个单表增删改查接口补充字段校验和单元测试。",
+    "should_trigger": false
+  }
+]
