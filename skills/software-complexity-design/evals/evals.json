@@ -1,0 +1,164 @@
+{
+  "skill_name": "software-complexity-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "A batch platform can either let its core service ingest and normalize a new feed directly, or add an independent preprocessing service that synchronizes normalized results. Compare the two architecture options.",
+      "expected_output": "Identify the few decisions that determine the boundary; compare candidates through change reach, knowledge authority, contract burden, recovery certainty, and evolution reversibility; cover consistency, idempotency, rollback, rerun, monitoring, and closeout; recommend an option with explicit assumptions and five-control delivery evidence.",
+      "should_trigger": true,
+      "assertions": [
+        "Compares two substantively different options rather than describing only one.",
+        "Assigns data, state, rule, and recovery ownership.",
+        "Covers idempotency, rollback or rerun, monitoring, and closeout.",
+        "Evaluates change, knowledge, contract, recovery, and evolution controls without reducing them to one score.",
+        "Does not reproduce change amplification, cognitive load, and hidden impact points as a standalone ordered three-item checklist.",
+        "Recommends an option and states the assumptions that support it.",
+        "States assumptions and open questions separately from confirmed facts."
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review a new service that exposes many fine-grained APIs. Callers must query a batch, fetch details, inspect errors, and decide how to roll back.",
+      "expected_output": "Recognize a shallow boundary, pass-through APIs, temporal decomposition, and leaked recovery knowledge; propose a higher-level contract while preserving compatibility, performance, permissions, and critical failure signals.",
+      "should_trigger": true,
+      "assertions": [
+        "Explains why caller-managed sequencing leaks internal knowledge.",
+        "Identifies pass-through interfaces or temporal decomposition as candidate design problems.",
+        "Proposes a higher-level business contract or command.",
+        "Addresses compatibility, performance, permissions, and failure recovery.",
+        "Does not treat API count alone as proof of a design flaw."
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "An architecture document claims that a workflow service owns all end-of-day state because its runtime scans several domain packages. No repository or configuration evidence is attached. Review the claim.",
+      "expected_output": "Request current branch, commit, and dated evidence; distinguish repository, build module, package, runtime/deployment unit, and business owner; treat scanning or dependency as navigation evidence rather than proof of ownership; label facts, evidence-backed judgments, inferences, and open questions.",
+      "should_trigger": true,
+      "assertions": [
+        "Rejects package scanning as sufficient proof of business ownership.",
+        "Distinguishes repository, build module, package, runtime or deployment unit, and business owner.",
+        "Requests branch, commit, working-tree status, date, and concrete state-write or contract evidence.",
+        "Separates facts, judgments, inferences, and open questions."
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Turn software-complexity warning signs into a one-page design review guide for engineers who have not read the source material.",
+      "expected_output": "Use understandable labels that state the object, action, and impact; preserve short attributed English terms only when useful; avoid unexplained literal translations, slogans, or claims that the guidance is an organization-wide standard.",
+      "should_trigger": true,
+      "assertions": [
+        "Each warning sign names a concrete structural symptom and its impact.",
+        "Each recommended action is tied to the structural symptom it addresses.",
+        "Attributes short English terms when used and avoids unexplained literal translations.",
+        "Does not present the guidance as an existing organization-wide mandate."
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Review a submission workflow where product owners have not defined defaults for missing business date and scope. Requests may retry with the same idempotency key, reuse the key with different parameters, or submit the same business action under a new key. The team also wants to add caching and concurrency early.",
+      "expected_output": "Separate technical safeguards, product-defined defaults, and authoritative context; distinguish request retries, key conflicts, and duplicate business actions; preserve critical errors; decide boundaries before implementation methods; require evidence, targets, and rollback criteria before adding performance complexity.",
+      "should_trigger": true,
+      "assertions": [
+        "Separates technical safeguards, product defaults, and authoritative context.",
+        "Distinguishes same-key retries, same-key parameter conflicts, and new-key duplicate business actions.",
+        "Preserves critical permission, state, and consistency errors.",
+        "Determines ownership and boundary decisions before prescribing implementation techniques.",
+        "Requires measurable targets and rollback criteria before adding caching or concurrency."
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Design the classes, database columns, and CRUD endpoints for editing an order note.",
+      "expected_output": "Identify this as code-level detailed design rather than a cross-module complexity-design task, state the boundary briefly, and avoid forcing the full architecture workflow.",
+      "should_trigger": false,
+      "assertions": [
+        "Identifies the request as code-level detailed design.",
+        "Does not apply the full cross-system architecture workflow."
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "我们准备把一条跨系统批处理链路拆成接入、加工和核心消费三个服务。请评审边界、状态所有权、重复处理、回退重跑和收尾监控。",
+      "expected_output": "使用中文输出；先区分事实与待确认；通过变化演练识别重复规则和隐式时序；明确数据、状态、规则与恢复责任；比较至少两个实质候选；以变化、知识、契约、恢复、演进五控制面给出交付门禁。",
+      "should_trigger": true,
+      "assertions": [
+        "Responds in Chinese.",
+        "Separates confirmed facts from open questions.",
+        "Uses a current or adjacent change rehearsal to expose duplicated rules, implicit sequencing, or hidden entry points.",
+        "Assigns data, state, rule, and recovery ownership.",
+        "Compares at least two substantive candidates or explains why one is excluded.",
+        "Covers idempotency, rerun, closeout monitoring, and validation evidence.",
+        "Ends with distinct change, knowledge, contract, recovery, and evolution delivery gates."
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "A daily batch was marked complete, but missing source records arrived late after downstream systems had already consumed the result. The transformation rule has also been corrected. Design the recovery flow.",
+      "expected_output": "Separate late-data backfill, rule-version reprocessing, consumed-result rollback or compensation, and checkpointed rerun; preserve source time and lineage; create a new result version instead of overwriting; define closeout reopening, idempotency, reconciliation, ownership, and execution order.",
+      "should_trigger": true,
+      "assertions": [
+        "Defines how late or missing source data is backfilled with source identity, business time, and deduplication.",
+        "Reprocesses corrected input or rules into a traceable new result version without overwriting consumed output.",
+        "Chooses rollback for reversible controlled side effects and compensation for irreversible or cross-system effects.",
+        "Runs again only after backfill or reprocessing and consumed-result handling, from an explicit checkpoint.",
+        "Defines closeout reopening, ownership, idempotency, and final reconciliation."
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "A team is using TDD for a new workflow, but every scenario test must orchestrate six low-level APIs and mock three services' internal states. Review the test and architecture design approach.",
+      "expected_output": "Use test friction as evidence of leaked knowledge; define caller-visible behavior, invariants, errors, and recovery first; compare higher-level contract candidates; assign ownership before implementation-level red-green-refactor; preserve external behavior tests while allowing internal implementation tests to evolve.",
+      "should_trigger": true,
+      "assertions": [
+        "Treats excessive orchestration and mocks as evidence to investigate rather than proof by themselves.",
+        "Defines caller-visible behavior, invariants, errors, and recovery outcomes before implementation steps.",
+        "Compares at least two contract or boundary options.",
+        "Assigns data, state, rule, and recovery ownership before implementation-level TDD.",
+        "Separates stable external behavior tests from changeable internal implementation tests."
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "A large platform has added a new branch, state, scheduler rule, monitoring rule, and operations script for each of its last five business scenarios. Propose an incremental architecture evolution plan.",
+      "expected_output": "Use recent changes as evidence; separate stable lifecycle from scenario policy; choose one measurable slice for ownership or contract consolidation; preserve compatibility and rollback; avoid a full rewrite; validate improvement using the next real change's modification count, context load, and missed impact points.",
+      "should_trigger": true,
+      "assertions": [
+        "Uses recent change history to identify repeated modification surfaces.",
+        "Separates stable lifecycle mechanisms from scenario-specific policy.",
+        "Chooses one bounded, independently verifiable migration slice.",
+        "Defines compatibility, observation, and rollback for the old path.",
+        "Measures success using a later real change rather than completion of the refactor itself.",
+        "Does not recommend an unbounded platform rewrite."
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "Create a reusable end-to-end decision canvas for comparing two cross-system boundary options. It must be independent from any source article's symptom list, convergence checklist, chapter sequence, or solution-comparison checklist.",
+      "expected_output": "Use this six-part order: falsifiable decision, five evidence packs, hard gates, nine decision questions, validation experiments, decision record. The nine questions must be grouped as recovery (2), evolution (2), contract (2), change-and-knowledge (2), and integrated tradeoff (1), in that order; explain that the count, categories, and ordering are independently derived; do not reproduce a standalone ordered trio of change amplification, cognitive load, and hidden impact points.",
+      "should_trigger": true,
+      "assertions": [
+        "Uses the full six-part order: falsifiable decision, five evidence packs, hard gates, nine questions, validation experiments, and decision record.",
+        "Defines evidence packs for recovery, evolution, contract, change, and knowledge controls.",
+        "Applies non-negotiable hard gates before comparing candidate advantages.",
+        "Contains exactly nine numbered decision questions.",
+        "Groups questions as recovery 2, evolution 2, contract 2, change-and-knowledge 2, and integrated tradeoff 1.",
+        "Uses recovery, evolution, contract, change, and knowledge controls rather than a source comparison checklist.",
+        "Does not present change amplification, cognitive load, and hidden impact points as a standalone ordered trio.",
+        "Includes validation experiments for architecture boundaries, TDD contracts, or incremental evolution.",
+        "Ends with a decision record containing assumptions, evidence, rollback, and reevaluation conditions.",
+        "States that the framework's count, grouping, and order are independently derived."
+      ],
+      "files": []
+    }
+  ]
+}
