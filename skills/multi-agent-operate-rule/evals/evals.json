@@ -1,0 +1,245 @@
+{
+  "skill_name": "multi-agent-operate-rule",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "An executor has no access to the coordinator's chat. Hand off the work of checking why two titles were omitted from a weekly digest.",
+      "expected_output": "Produce a task brief that states the goal, non-goals, fixed input versions, allowed actions, dependencies, deliverable location and version, completion contract, and return path. Do not rely on the main session history.",
+      "should_trigger": true,
+      "assertions": [
+        "The task brief can be understood without the main session.",
+        "Inputs are identified by version rather than as the latest file or a mutable branch name.",
+        "Scope and non-goals are both explicit.",
+        "The completion contract is one of report, implement-and-self-test, or fix-until-pass."
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "This typo in one local function is obvious. Please still split it across a coordinator, an implementer, a reviewer, and an approver.",
+      "expected_output": "Keep the work with one executor because there is no independent responsibility, context isolation, specialist review need, or parallel benefit. Do not create empty role reports.",
+      "should_trigger": true,
+      "assertions": [
+        "Refuses to split the task merely to fill roles.",
+        "States which split condition is missing.",
+        "Does not invent a queue, lock, or extra approval for the typo."
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Two agents can investigate a digest omission at the same time: one reads the inclusion rules, the other checks title identifiers. Coordinate them.",
+      "expected_output": "Dispatch both only with the same read-only input versions and non-overlapping outputs. The coordinator records both returns and does not drop either result.",
+      "should_trigger": true,
+      "assertions": [
+        "Uses the same fixed input versions for both executors.",
+        "Assigns separate output locations.",
+        "Keeps adoption and downstream inputs serialized by the coordinator.",
+        "Does not treat a missing second result as permission to overwrite or discard it."
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "A candidate report exists at revision r1 but has not been adopted. The reviewer needs to read it before anyone accepts it.",
+      "expected_output": "Tell the reviewer to read revision r1 exactly, return a receipt, and leave the adopted state unchanged until verification finishes.",
+      "should_trigger": true,
+      "assertions": [
+        "Reads the named candidate version.",
+        "Does not mark the candidate adopted merely so it can be read.",
+        "Separates a read receipt from acceptance."
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "The investigation contract says a written report is enough. The report concludes the current rule excludes two titles. Is this task done, and did the product pass?",
+      "expected_output": "Treat the negative report as a valid delivery for the investigation contract. Keep execution status, quality conclusion, and acceptance separate. Do not describe the subject as approved.",
+      "should_trigger": true,
+      "assertions": [
+        "Accepts a negative finding as a completed report when that contract was selected.",
+        "Does not equate report completion with the investigated subject passing.",
+        "Keeps execution, quality, and acceptance as separate conclusions."
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "The worker process exited after publishing a handoff. A new worker cannot see the old disk. Continue the digest investigation.",
+      "expected_output": "Resume from the published task record and handoff versions. Do not assume unpublished drafts, the old process, or local paths still exist.",
+      "should_trigger": true,
+      "assertions": [
+        "Starts by locating the task and reading durable materials.",
+        "Does not depend on the dead workspace or unpublished notes.",
+        "Identifies the next unfinished action and its owner."
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "The report upload returned a timeout, but the storage listing may already contain revision r4. The executor wants to upload the same report again immediately.",
+      "expected_output": "Reconcile the target state and the original receipt before any retry. If r4 is present, keep it and backfill the task link. If the result is still unknown, pause the write.",
+      "should_trigger": true,
+      "assertions": [
+        "Checks whether the external write happened before retrying.",
+        "Does not immediately upload again after a timeout.",
+        "Leaves the result unknown when neither the target nor a receipt can confirm it.",
+        "Does not claim the operation ran exactly once while the outcome is unknown."
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "The same review comment saying revision r1 is adopted was delivered twice. Dispatch the downstream implementation once.",
+      "expected_output": "Recognize the duplicate notification, keep a single adoption record, and do not dispatch the downstream task a second time.",
+      "should_trigger": true,
+      "assertions": [
+        "Detects that the same result was already processed.",
+        "Does not adopt the same version twice.",
+        "Does not dispatch a duplicate follow-up task."
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "The approver replied in the agreed channel before the coordinator finished registering the wait state. Someone suggests asking for the same approval again.",
+      "expected_output": "Look up the original feedback, attach it to the request version, and continue from that record. Do not demand a second approval only because the wait record was late.",
+      "should_trigger": true,
+      "assertions": [
+        "Uses the original feedback that arrived early.",
+        "Does not require a duplicate approval.",
+        "Still checks the decider, question, and version before acting."
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "A bystander wrote 'looks fine' and another message is only a thumbs-up on an unrelated comment. Can the coordinator treat either as approval to change the digest behavior?",
+      "expected_output": "Reject both as approval. Vague agreement and reactions do not identify the decider's authority, question, version, and scope.",
+      "should_trigger": true,
+      "assertions": [
+        "Does not treat a vague comment as a decision.",
+        "Does not treat a reaction or acknowledgement as expanded authority.",
+        "Keeps the request pending until a verifiable decision arrives."
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "Sam approved revision r1 of the report. The report was then rewritten as r2 with a wider scope. May the implementer apply Sam's approval to r2?",
+      "expected_output": "Do not apply the old decision to the changed version. Request a new decision bound to r2, or reduce the work back to the approved scope.",
+      "should_trigger": true,
+      "assertions": [
+        "Binds the decision to revision r1 only.",
+        "Does not let r2 proceed under r1's approval after the scope changed.",
+        "Asks for a new decision or a narrower scope."
+      ],
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "One executor failed and the parent task was cancelled. A late success event for the cancelled task just arrived. What should the coordinator record?",
+      "expected_output": "Record the failure or the cancellation with its stop scope, keep finished artifacts, and do not restart work because a stale event arrived. If no automatic signal exists, name the person who must notice.",
+      "should_trigger": true,
+      "assertions": [
+        "Makes the failure or cancellation visible to the coordinator.",
+        "Preserves completed artifacts.",
+        "Does not reopen cancelled work from a late event.",
+        "Names the human starter when automatic triggering is absent."
+      ],
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "A coordinator run starts from a subtask event about title identifiers. Other unfinished dependencies exist on the parent goal.",
+      "expected_output": "Resolve the parent goal, the registered coordinator, and unfinished dependencies before handling the subtask event.",
+      "should_trigger": true,
+      "assertions": [
+        "Locates the overall task rather than treating the subtask as the whole goal.",
+        "Lists unfinished dependencies.",
+        "Does not dispatch downstream work that still depends on missing results."
+      ],
+      "files": []
+    },
+    {
+      "id": 14,
+      "prompt": "The user wants the already submitted rules report at r1 revised. Coordinate the remaining work.",
+      "expected_output": "Keep r1 available, open a new task for the remaining revision, and do not destroy the prior version or silently replace in-flight inputs.",
+      "should_trigger": true,
+      "assertions": [
+        "Preserves the previously submitted version.",
+        "Assigns the remaining change through the coordinator.",
+        "Identifies which existing conclusions must be rechecked."
+      ],
+      "files": []
+    },
+    {
+      "id": 15,
+      "prompt": "The required handoff revision cannot be opened. A newer draft is available in the same folder. Should the executor use that draft and mark the handoff complete?",
+      "expected_output": "Stop the dependent step, report the exact missing version, and continue only work that does not need it. Do not substitute another file or claim the handoff completed.",
+      "should_trigger": true,
+      "assertions": [
+        "Does not replace the unreadable input with a latest or neighboring file.",
+        "Reports the missing version as a blocker.",
+        "Does not mark the handoff complete."
+      ],
+      "files": []
+    },
+    {
+      "id": 16,
+      "prompt": "The rules investigation, the identifier investigation, and the approved implementation tasks are all finished. Prepare the closeout. The team also wants to deploy now.",
+      "expected_output": "Summarize artifacts, risks, and the acceptance basis, then request final acceptance. State that finishing the collaboration does not approve deploy or release.",
+      "should_trigger": true,
+      "assertions": [
+        "Summarizes completed results and remaining risks.",
+        "Requests acceptance instead of declaring the business decision already made.",
+        "Does not treat task completion as deploy or release approval."
+      ],
+      "files": []
+    },
+    {
+      "id": 17,
+      "prompt": "Build a durable job queue with polling, distributed locks, and credential rotation for our agents.",
+      "expected_output": "Treat this as outside the skill. The skill coordinates people and agents through durable materials; it does not implement a scheduler, lock service, or secret store.",
+      "should_trigger": false,
+      "assertions": [
+        "Identifies scheduler, lock, and credential infrastructure as out of scope.",
+        "Does not provide a queue, polling loop, lock recipe, or credential scheme."
+      ],
+      "files": []
+    },
+    {
+      "id": 18,
+      "prompt": "Rename the local variable in this single function and leave behavior unchanged.",
+      "expected_output": "Do not start multi-agent coordination for a change one executor can finish directly.",
+      "should_trigger": false,
+      "assertions": [
+        "Does not apply the multi-agent dispatch workflow.",
+        "Does not split the rename across roles."
+      ],
+      "files": []
+    },
+    {
+      "id": 19,
+      "prompt": "The agents finished their notes. Approve production deployment and publish the release.",
+      "expected_output": "Do not convert the end of collaboration into deploy or release approval.",
+      "should_trigger": false,
+      "assertions": [
+        "Separates collaboration closeout from deployment and release approval.",
+        "Does not grant or simulate the missing approval."
+      ],
+      "files": []
+    },
+    {
+      "id": 20,
+      "prompt": "Review this one function for naming clarity. No other agent is involved.",
+      "expected_output": "Leave the review to ordinary code reading. Do not wrap a single-function naming pass in multi-agent roles.",
+      "should_trigger": false,
+      "assertions": [
+        "Does not launch the collaboration workflow for a single-function review.",
+        "Does not replace a specialized review skill with coordination ceremony."
+      ],
+      "files": []
+    }
+  ]
+}
