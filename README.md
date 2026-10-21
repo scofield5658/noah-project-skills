@@ -63,6 +63,19 @@ rg '^name: software-complexity-design$' \
 ## Current scope
 
 - `software-complexity-design`: design and review project architecture, TDD-oriented behavior contracts, cross-system recovery, and incremental evolution of large codebases with an emphasis on controlling change complexity.
+- `multi-agent-operate-rule`: coordinate one goal across agents or separate sessions, with fixed input versions, explicit roles, versioned handoffs, and a named resume point.
+
+Install and discovery for `multi-agent-operate-rule` follow the same directory convention:
+
+```bash
+mkdir -p "$HOME/.agents/skills"
+cp -R "<repo-root>/skills/multi-agent-operate-rule" "$HOME/.agents/skills/"
+test -f "$HOME/.agents/skills/multi-agent-operate-rule/SKILL.md"
+rg '^name: multi-agent-operate-rule$' \
+  "$HOME/.agents/skills/multi-agent-operate-rule/SKILL.md"
+```
+
+The directory name and frontmatter `name` must both be `multi-agent-operate-rule`. Automatic use starts when work must be split, handed off, reviewed independently, or resumed across agents. A task one executor can finish, a request to build a scheduler, and merge, deploy, or release approval do not start this skill.
 
 ## Contribution rules
 

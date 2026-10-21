@@ -1,0 +1,66 @@
+[
+  {
+    "query": "Split this feature across two agents, give each a fixed input version, and tell me how the results should be handed back.",
+    "should_trigger": true
+  },
+  {
+    "query": "Coordinate a reviewer who has not seen the implementer's chat, and require an exact revision before anyone adopts the report.",
+    "should_trigger": true
+  },
+  {
+    "query": "The worker died after publishing a handoff. Resume the multi-agent task from durable materials without the old disk.",
+    "should_trigger": true
+  },
+  {
+    "query": "Two investigators can run in parallel. Keep their outputs apart and make sure the coordinator records both.",
+    "should_trigger": true
+  },
+  {
+    "query": "An external write timed out. Reconcile before any agent retries it, then hand the unknown result back to the coordinator.",
+    "should_trigger": true
+  },
+  {
+    "query": "We need a human decision on this revision before agents continue, including who answers and where the next run resumes.",
+    "should_trigger": true
+  },
+  {
+    "query": "A subtask event woke the coordinator. Find the parent goal and the dependencies that are still open.",
+    "should_trigger": true
+  },
+  {
+    "query": "请把这个目标拆给多个 agent，规定各自的输入版本、交接材料和中断后如何恢复。",
+    "should_trigger": true
+  },
+  {
+    "query": "候选报告已经发布但还没采用。请安排另一位执行者按指定版本复核，不要先改成已采用。",
+    "should_trigger": true
+  },
+  {
+    "query": "Rename a local variable in one function.",
+    "should_trigger": false
+  },
+  {
+    "query": "Write unit tests for this pure helper. I will keep editing the same file myself.",
+    "should_trigger": false
+  },
+  {
+    "query": "Build a background job queue, polling loop, and distributed lock for agents.",
+    "should_trigger": false
+  },
+  {
+    "query": "Set up model billing, token quotas, and API key rotation.",
+    "should_trigger": false
+  },
+  {
+    "query": "The collaboration notes are finished, so approve production deploy and publish the release.",
+    "should_trigger": false
+  },
+  {
+    "query": "Review the naming in this single function. No handoff is needed.",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我给一个函数改个更清楚的局部变量名。",
+    "should_trigger": false
+  }
+]
