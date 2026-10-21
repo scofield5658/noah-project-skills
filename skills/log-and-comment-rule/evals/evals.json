@@ -1,0 +1,178 @@
+{
+  "skill_name": "log-and-comment-rule",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "给十万条文档转换批处理补日志。入口与业务处理函数已有重复成功日志，失败后事务回滚，也有幂等跳过。只允许日志和注释改动。",
+      "expected_output": "记录批次摘要与关键失败，区分失败与保护性跳过，避免逐条成功日志和层间重复，不改事务。",
+      "should_trigger": true,
+      "assertions": [
+        "汇总总数、成功、失败、跳过及必要失败样本。",
+        "按既有约定区分失败error和需要关注的保护性跳过warn。",
+        "不逐条记录成功，不改事务或控制流。"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Java 服务现有 logger.error(\"失败\", e)。请增加文档审核失败的定位信息，请求内有token和完整DTO，不要改异常传播。",
+      "expected_output": "使用已有日志库补动作与安全标识，保留异常，不输出完整请求或凭据。",
+      "should_trigger": true,
+      "assertions": [
+        "记录动作、文档标识和原始异常。",
+        "SLF4J使用匹配的占位符及末尾异常参数。",
+        "不打印token或完整DTO，不新增捕获或改变传播。"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Java整改明确要求补全类与方法说明，包含复杂方法、getter、无附加语义CRUD和直通委派。没有额外文档检查要求。",
+      "expected_output": "使用完整注释模式，同时保留简单方法的默认豁免。",
+      "should_trigger": true,
+      "assertions": [
+        "补类职责及复杂方法参数、结果、副作用。",
+        "不强制为简单getter、CRUD和直通委派写空洞说明。",
+        "不改变方法实现。"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "持久化模型fileId无文档，DDL明确为文档ID；state已有等价字段描述；ratio没有任何契约依据。补齐字段说明。",
+      "expected_output": "以DDL补fileId，复用state说明，ratio列待查证，不猜范围。",
+      "should_trigger": true,
+      "assertions": [
+        "fileId按已给DDL记录文档ID。",
+        "不重复state的等价说明。",
+        "不从ratio名称推断单位或0到1范围。"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "外部检索请求有cursor、limit，响应有total。契约只明确cursor为不透明游标、limit最大100，未明确total含义。请补接口模型说明。",
+      "expected_output": "区分请求响应，记录已知口径，total待查证。",
+      "should_trigger": true,
+      "assertions": [
+        "为边界模型补职责说明并逐字段检查。",
+        "保留游标不透明和limit上限100的契约。",
+        "不编造total为当前页或全部记录总数。"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Python使用标准logging。现有except里logger.error(\"复制失败 id={}\", document_id)，接着bare raise。只修正诊断信息。",
+      "expected_output": "使用%s与参数，保留当前异常信息与bare raise。",
+      "should_trigger": true,
+      "assertions": [
+        "标准logging使用%s等合法占位符，不照搬{}。",
+        "在已有except使用exc_info=True或logger.exception。",
+        "不新增吞异常、重试或改变raise。"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Python函数型服务与dataclass需要补全职责、函数契约、持久化字段说明。文档使用中文Google风格，字段source_document_id和copied_document_id的DDL含义明确。",
+      "expected_output": "使用docstring及既有属性文档，不引入Java结构。",
+      "should_trigger": true,
+      "assertions": [
+        "使用Python docstring并沿用Google风格。",
+        "持久化属性逐一说明已知字段含义。",
+        "不引入Service类、Javadoc、Lombok或新文档依赖。"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Go 1.21服务已使用slog.Logger，现有错误分支有ctx、documentID、err，并在后面return err。只补失败日志。",
+      "expected_output": "在原错误位置用ErrorContext和成对属性记录，不改返回。",
+      "should_trigger": true,
+      "assertions": [
+        "使用slog.ErrorContext或既有logger.ErrorContext和成对属性。",
+        "保留documentID与原始err，不使用{}格式模板。",
+        "保留return err，不宣称error自带堆栈。"
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "Go 1.20工具仅用标准log，无context参数。希望按这套原则补关键失败日志，但不能升级依赖。",
+      "expected_output": "沿用log现有API与上下文，不使用不存在的级别或引入slog。",
+      "should_trigger": true,
+      "assertions": [
+        "不对标准log调用Error或Warn方法。",
+        "不引入要求Go1.21的slog或强制升级。",
+        "不新增context参数，不改变错误返回。"
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Go导出结构体及函数需要补文档，字段仅有json tag，字段含义在契约中明确。项目要求所有导出符号有说明，包括简单访问器。",
+      "expected_output": "用紧邻声明、以符号名开头的doc comment，遵守导出文档覆盖。",
+      "should_trigger": true,
+      "assertions": [
+        "使用Go doc comment，不用Javadoc或Python字符串。",
+        "不把json tag当业务语义文档。",
+        "公开API文档要求优先于简单方法豁免。"
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "为状态流转函数补注释。注释称失败后自动重试，但实现只返回错误。顺手加三次重试让注释变正确吧。",
+      "expected_output": "指出注释与实现不符，按实际行为说明，业务重试改动另行处理。",
+      "should_trigger": true,
+      "assertions": [
+        "不以补注释为由新增重试或副作用。",
+        "将说明与当前实现对齐，明确后续行为需求不属于本轮。"
+      ],
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "同一个变更有Java、Python和Go目录。请统一日志注释原则，但保留每个目录的日志库、字段命名和文档风格。",
+      "expected_output": "共享诊断目标，分别采用各语言原生API和文档格式。",
+      "should_trigger": true,
+      "assertions": [
+        "Java、Python、Go分别处理，不全改成Javadoc。",
+        "不统一框架、不升级依赖、不改变告警级别口径。",
+        "共同保留最少上下文、敏感数据保护和无业务行为改动。"
+      ],
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "纯粹优化这条SQL的执行计划和索引，不需要日志或注释整改。",
+      "expected_output": "作为SQL性能任务处理，不套用日志注释整改。",
+      "should_trigger": false,
+      "assertions": [
+        "不以本技能替代SQL优化。"
+      ],
+      "files": []
+    },
+    {
+      "id": 14,
+      "prompt": "请搭建集中日志平台，配置采集agent、索引生命周期、告警和访问权限。",
+      "expected_output": "作为日志基础设施任务处理，不声称代码日志注释原则能完成平台建设。",
+      "should_trigger": false,
+      "assertions": [
+        "明确不属于本技能的代码日志注释范围。"
+      ],
+      "files": []
+    },
+    {
+      "id": 15,
+      "prompt": "只重命名这个函数的局部变量，不涉及说明或可观测性改进。",
+      "expected_output": "按局部命名任务处理，不机械补日志与注释。",
+      "should_trigger": false,
+      "assertions": [
+        "不添加无关日志注释或执行本技能的完整流程。"
+      ],
+      "files": []
+    }
+  ]
+}

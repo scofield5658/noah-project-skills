@@ -1,0 +1,82 @@
+[
+  {
+    "query": "Java批处理排障困难，只补批次摘要与异常上下文，不改业务。",
+    "should_trigger": true
+  },
+  {
+    "query": "Python后台任务全是print和看不懂的分支，请改进诊断日志与解释性注释，沿用项目logging。",
+    "should_trigger": true
+  },
+  {
+    "query": "Go Handler和业务函数重复记录失败，帮我检查日志边界。",
+    "should_trigger": true
+  },
+  {
+    "query": "给Python dataclass持久化字段补已确认的业务含义，不要从字段名猜。",
+    "should_trigger": true
+  },
+  {
+    "query": "Go struct只有json tag，补契约说明和导出字段文档。",
+    "should_trigger": true
+  },
+  {
+    "query": "明确要求完整方法文档，简单getter是否也要机械补？按规则整改。",
+    "should_trigger": true
+  },
+  {
+    "query": "Our Python callback logs only failed. Add safe context and exception details without changing retries.",
+    "should_trigger": true
+  },
+  {
+    "query": "Review SLF4J placeholder usage and exception arguments in these changed logs.",
+    "should_trigger": true
+  },
+  {
+    "query": "混合Java/Python/Go仓库只改日志注释，各自保持原有风格。",
+    "should_trigger": true
+  },
+  {
+    "query": "Rust后端现有tracing日志缺少失败上下文，请按已有API克制补充，并解释补偿分支意图。",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我设计集中日志平台的分片、保留周期和权限。",
+    "should_trigger": false
+  },
+  {
+    "query": "生产日志显示大量超时，请定位根因，暂不改代码日志或注释。",
+    "should_trigger": false
+  },
+  {
+    "query": "给这个Go项目升级到新版本slog并迁移所有logger。",
+    "should_trigger": false
+  },
+  {
+    "query": "请为Python部署OpenTelemetry采集器，配置trace导出。",
+    "should_trigger": false
+  },
+  {
+    "query": "只做SQL索引优化，不涉及代码可观测性和说明。",
+    "should_trigger": false
+  },
+  {
+    "query": "请生成表结构迁移脚本，不修改字段注释。",
+    "should_trigger": false
+  },
+  {
+    "query": "Translate the existing documentation into English without editing code comments or logs.",
+    "should_trigger": false
+  },
+  {
+    "query": "Implement a retry scheduler with backoff and dead-letter handling.",
+    "should_trigger": false
+  },
+  {
+    "query": "重命名局部变量即可，不要补日志注释。",
+    "should_trigger": false
+  },
+  {
+    "query": "审计日志合规系统需要不可篡改存储及授权策略，请设计架构。",
+    "should_trigger": false
+  }
+]

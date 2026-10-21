@@ -64,6 +64,7 @@ rg '^name: software-complexity-design$' \
 
 - `software-complexity-design`: design and review project architecture, TDD-oriented behavior contracts, cross-system recovery, and incremental evolution of large codebases with an emphasis on controlling change complexity.
 - `multi-agent-operate-rule`: coordinate one goal across agents or separate sessions, with fixed input versions, explicit roles, versioned handoffs, and a named resume point.
+- `log-and-comment-rule`: add or review focused backend logs and comments across Java, Python, Go, and other languages, following each project's existing logging and documentation conventions.
 
 Install and discovery for `multi-agent-operate-rule` follow the same directory convention:
 
