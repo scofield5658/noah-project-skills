@@ -1,7 +1,7 @@
 ---
 name: log-and-comment-rule
 description: >-
-  Use when 需要为 Java、Python、Go 等后端代码补充或审查日志与注释，
+  Use when 需要为 Java、Python、Go、Node.js（JavaScript / TypeScript）等后端代码补充或审查日志与注释，
   包括代码审查整改、可读性提升、生产问题定位，以及批处理、状态流转、
   回调和异步任务的可观测性增强。
 ---
@@ -17,7 +17,7 @@ description: >-
 1. **出问题时能定位**
 2. **读代码时能理解作者意图**
 
-本 skill 适用于 Java、Python、Go 等后端代码，以及批处理、状态机、审批流、回调、异步任务、数据库写入链路等场景。
+本 skill 适用于 Java、Python、Go、Node.js（JavaScript / TypeScript）等后端代码，以及批处理、状态机、审批流、回调、异步任务、数据库写入链路等场景。
 
 执行前先确认目标语言、版本、现有日志框架、文档风格和整改范围；按职责识别入口、业务处理、数据访问和边界模型，不要求项目使用分层类结构。多语言项目分别沿用各自约定。
 
@@ -141,6 +141,13 @@ description: >-
 
 ## 日志原则
 
+## 0. 复用项目日志入口，保留环境策略
+
+- 各语言均优先通过项目已封装或注入的 logger、日志收集器或等价诊断入口，记录关键动作、关联标识、结果和必要错误信息；先核对其调用契约，不绕过它另建日志实例或仅用 `print` / `console` / 标准输出替代。
+- 没有统一封装时，沿用项目现有日志方式；下文语言库示例仅用于适配，不要求新引入框架、收集器或依赖。
+- 检查关键字段能否经过现有格式化、序列化和采集入口保留下来；仅有日志调用不代表信息可追踪。能验证时检查实际输出，资料或环境不足时明确缺口，不宣称部署后已可检索。
+- 日志在测试、生产等环境是否启用，以及级别阈值、采样和输出去向，遵循用户明确要求与项目现状。未获相应授权，不擅自开启、关闭或调整这些策略，也不自行添加环境判断；发现诊断缺口时说明影响与可选方案，不以排障需要替用户决定。
+
 ## 1. 日志级别
 
 以下为诊断语义；实际级别名和 API 沿用项目规范，不因迁移语言而改写已有告警口径。无级别的日志库不伪造 `warn` / `error` 方法，也不自动更换框架。
@@ -176,7 +183,7 @@ description: >-
 - `why skipped + context`
 - `state change + old/new + key id`
 
-以下日志示例均为虚构的文档处理场景，`{}` 仅展示上下文位置；Python logging、Go 等 API 不直接套用该占位符：
+以下日志示例均为虚构的文档处理场景，`{}` 仅展示上下文位置；Python logging、Go、Node.js 等 API 不直接套用该占位符：
 
 - `开始审核待发布文档, ids={}, targetStatus={}`
 - `跳过文档索引更新, documentId={}, reason={}`
@@ -266,7 +273,7 @@ description: >-
 - **默认豁免**：纯 getter / setter、自动生成代码、零业务语义的构造器、明显的测试夹具函数，除非它们承载了额外业务约束，否则不要补注释
 - **默认豁免**：显而易见的 CRUD 方法、仅做日志后直通委派的 controller / facade 包装方法、mapper/interface 上一眼可读的增删改查声明，默认不补方法注释
 
-按目标语言使用原生文档格式；Java 使用 Javadoc，Python 使用 docstring，Go 使用声明前的 doc comment。公开 API 或文档检查有覆盖要求时，不适用上述简单方法豁免。以下保留 Java 示例；Python、Go 对应示例见[语言适配说明](references/language-adaptation.md)。
+按目标语言使用原生文档格式；Java 使用 Javadoc，Python 使用 docstring，Go 使用声明前的 doc comment，JavaScript 使用 JSDoc，TypeScript 沿用项目文档格式。公开 API 或文档检查有覆盖要求时，不适用上述简单方法豁免。以下保留 Java 示例；其他语言适配见[语言适配说明](references/language-adaptation.md)。
 
 ```java
 /**
@@ -344,11 +351,11 @@ public class DocumentSubmissionServiceImpl {
 
 ## 5. 持久化模型字段注释
 
-持久化模型（Java Entity、Python ORM model / dataclass、Go struct 等）连接数据库字段与业务代码。字段名即使使用英文且命名规范，也不一定能准确表达数据库设计中的业务含义，因此按以下规则处理：
+持久化模型（Java Entity、Python ORM model / dataclass、Go struct、JS/TS ORM 模型等）连接数据库字段与业务代码。字段名即使使用英文且命名规范，也不一定能准确表达数据库设计中的业务含义，因此按以下规则处理：
 
 - 字段已有可直接识别的等价语义文档或元数据时，不重复添加；例如 Java `@Schema` 的描述、Python 模型字段描述、Go 字段 doc comment。只有类型、列名或 `json` tag 不算业务说明
 - 没有上述说明时，逐字段补充业务含义；中文项目保留字段业务含义的中文说明和中文句号，其他项目沿用其文档语言
-- Java 使用 Javadoc 块，Python 使用项目既有的属性文档或模型字段说明，Go 使用紧邻字段的 `// FieldName ...`；不跨语言强制套用 Javadoc、注解或字段空行规则
+- Java 使用 Javadoc 块，Python 使用项目既有的属性文档或模型字段说明，Go 使用紧邻字段的 `// FieldName ...`，JS/TS 使用属性文档或已有模型字段描述；不跨语言强制套用 Javadoc、注解或字段空行规则
 - 对状态、方向、类型、金额、比例、时间等容易误解的字段，应补充必要的口径、单位或取值范围
 - 注释必须以实际表结构、DDL、数据映射、接口契约或业务代码为依据；含义不确定时先查证，不凭英文名称臆造
 
@@ -370,11 +377,11 @@ private Long copiedDocumentId;
 
 对于带口径的字段，应记录契约已明确的单位和范围，例如“图片目标压缩比例，取值范围为 0 到 1。”；此范围仅为虚构示例，不从字段名推导。
 
-这类字段说明属于持久化模型的必要语义，不视为“翻译型注释”或机械注释。Python、Go 的模型示例见[语言适配说明](references/language-adaptation.md)。
+这类字段说明属于持久化模型的必要语义，不视为“翻译型注释”或机械注释。其他语言的模型适配见[语言适配说明](references/language-adaptation.md)。
 
 ## 6. Integration DTO / Contract 字段注释
 
-集成层模型定义本系统与外部系统之间的传输契约。它可能是 Java DTO / record、Python dataclass / 验证模型 / TypedDict、Go struct，或其他等价结构。即使字段名能够直译，仍需明确其在下游接口中的业务含义、口径和格式。
+集成层模型定义本系统与外部系统之间的传输契约。它可能是 Java DTO / record、Python dataclass / 验证模型 / TypedDict、Go struct、JavaScript 普通对象 / typedef、TypeScript interface / type，或其他等价结构。即使字段名能够直译，仍需明确其在下游接口中的业务含义、口径和格式。
 
 - 按职责识别外部边界，不依赖 `integration`、`client`、`adapter` 等目录名；请求与响应模型均需说明职责
 - 字段已有等价语义文档或元数据时，不重复；没有时，按目标语言逐字段说明，参照上一节的格式规则
@@ -407,7 +414,7 @@ private Long copiedDocumentId;
 - 默认不加日志
 - 仅在 SQL 字段映射非常反直觉时考虑加 SQL 侧注释；通常不是本 skill 的重点
 
-### DTO / Entity / Enum / dataclass / struct
+### DTO / Entity / Enum / dataclass / struct / 对象契约 / interface / type
 
 - 默认不加日志
 - 普通内部数据载体仅在字段含义明显反直觉、且会长期误导读者时考虑补字段/类注释
@@ -439,6 +446,8 @@ private Long copiedDocumentId;
 
 ## 自检清单
 
+- 是否复用了项目 logger 或等价采集入口，并检查关键字段的实际输出或说明验证缺口？
+- 是否遵循用户与项目的环境日志策略，没有擅自决定测试或生产是否启用？
 - 是否能从日志还原关键执行链路？
 - 出错时是否能快速定位到业务主键/批次/状态？
 - 是否避免了逐条成功日志刷屏？

@@ -78,5 +78,29 @@
   {
     "query": "审计日志合规系统需要不可篡改存储及授权策略，请设计架构。",
     "should_trigger": false
+  },
+  {
+    "query": "Node.js 中间件和异步任务只补日志注释，复用已有 logger，检查错误堆栈是否真的输出。",
+    "should_trigger": true
+  },
+  {
+    "query": "给 JavaScript 外部对象契约和 TypeScript interface 补字段含义与 Promise 返回说明。",
+    "should_trigger": true
+  },
+  {
+    "query": "Python 和 Golang 项目通过自定义 collector 采集关键失败，请沿用入口补诊断，保持现有环境开关。",
+    "should_trigger": true
+  },
+  {
+    "query": "Review Node.js polling and WebSocket diagnostics without changing error propagation or production logging settings.",
+    "should_trigger": true
+  },
+  {
+    "query": "把 Node.js 全部日志迁移到新框架并重新搭建采集管道，不做代码日志注释整改。",
+    "should_trigger": false
+  },
+  {
+    "query": "仅调整测试与生产环境的日志级别和采样开关，不修改代码日志或注释。",
+    "should_trigger": false
   }
 ]

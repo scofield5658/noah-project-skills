@@ -173,6 +173,128 @@
         "不添加无关日志注释或执行本技能的完整流程。"
       ],
       "files": []
+    },
+    {
+      "id": 16,
+      "prompt": "Node.js 文档服务已有 logger.error(message, meta)，其实现为 emit({level:'error', message, ...meta})；emit 只输出 JSON.stringify({level:info.level, message:info.message})。原 catch(err){logger.error('copy failed'); throw err;} 中可用 documentId。请补诊断，输出仅允许 documentId 和错误 name/message/stack，沿用脱敏约定。有人建议 logger.error('copy failed', {documentId, error:err})，请核实并修改，不能改共享 logger。",
+      "expected_output": "识别 metadata 被格式化器丢弃，通过已支持的 message 通道记录安全摘要与必要错误信息，保持原 throw；验证最终输出。",
+      "should_trigger": true,
+      "assertions": [
+        "检查实际输出，发现仅把 documentId/error 放入 metadata 不会保留诊断字段。",
+        "不直接依赖 JSON.stringify(err)、对象展开或只输出 err.message 保留完整诊断。",
+        "只取允许且已脱敏的字段，不输出 request、headers 或 config。",
+        "保留 throw err，不修改共享 formatter；验证格式化结果而非仅断言 logger 被调用。"
+      ],
+      "files": []
+    },
+    {
+      "id": 17,
+      "prompt": "Node.js 中间件已有 await next() 和失败 catch(err){throw err;}；后台消费 Promise 已有 catch(err){return Promise.reject(err);}，回调适配器已有 if(err){return callback(err);}。只补关键失败日志，入口日志已存在。",
+      "expected_output": "在既有处理点复用项目 logger，保留中间件、Promise 和回调传播，不重复入口日志。",
+      "should_trigger": true,
+      "assertions": [
+        "保留 await next()、throw err、Promise rejection 和 callback(err) 的语义与调用次数。",
+        "不新增全局 uncaughtException、unhandledRejection 监听，不增加重试或吞错。",
+        "沿用已有请求关联信息，不重复已有访问日志或同一失败堆栈。"
+      ],
+      "files": []
+    },
+    {
+      "id": 18,
+      "prompt": "Node.js HTTP 适配器已有错误处理和日志封装。请补诊断，覆盖服务返回错误响应、没有响应、超时和主动取消。错误对象可能携带 config.headers.Authorization、Cookie、完整请求体和循环引用；项目已提供安全错误序列化器。",
+      "expected_output": "复用安全序列化器和日志入口，以实际错误和客户端契约区分失败，不输出完整错误载荷。",
+      "should_trigger": true,
+      "assertions": [
+        "无 response 时仍可记录必要诊断，不无条件解引用 response.status。",
+        "不凭单一状态码臆断超时或取消，不把 HTTP 成功等同业务成功。",
+        "不 dump 客户端配置、headers、请求响应全文或循环对象。",
+        "不为补日志消费响应流或改变既有返回、异常和取消语义。"
+      ],
+      "files": []
+    },
+    {
+      "id": 19,
+      "prompt": "JavaScript 函数 persistCopy(options) 要补完整文档：返回 Promise，失败 resolve({ok:false}) 而不 reject，成功 resolve({ok:true})；会持久化副本。契约仅明确 options.documentId 为源文档标识，options.ratio 未明确单位。另有普通对象边界模型，可用 JSDoc，不允许改成 class 或 TypeScript。",
+      "expected_output": "用 JSDoc 说明参数、Promise 结果及写入副作用，按事实描述失败，未知字段不臆造。",
+      "should_trigger": true,
+      "assertions": [
+        "记录 Promise 解析结果及 ok:false 语义，不写成失败必定 throw/reject。",
+        "用项目认可的 @param、@returns、@typedef/@property 或属性说明表达契约。",
+        "ratio 单位待查证，不从名称推断范围。",
+        "不改变对象形态、模块制式、语言或运行逻辑。"
+      ],
+      "files": []
+    },
+    {
+      "id": 20,
+      "prompt": "TypeScript 服务的外部请求 interface、响应 type 和 ORM 模型要补字段说明。cursor 已有等价说明为不透明游标，limit 契约上限为100，total 只有 number 类型且含义未确认。沿用现有文档格式。",
+      "expected_output": "按职责核实边界模型，复用已有语义说明，补已知字段口径，不机械重复类型。",
+      "should_trigger": true,
+      "assertions": [
+        "interface、type、ORM 模型均按字段职责处理，不强制创建 DTO 类。",
+        "不重复 cursor 的等价说明，记录 limit 已知上限。",
+        "number 类型不代替 total 业务语义，未知口径列待核实。",
+        "不引入文档依赖或把所有 TS 类型再抄进 JSDoc。"
+      ],
+      "files": []
+    },
+    {
+      "id": 21,
+      "prompt": "Node.js 文档事件消费者有 WebSocket、轮询和纯对象映射 helper。请补日志与复杂分支注释，保留既有调度和日志策略，不要逐消息刷成功日志。",
+      "expected_output": "重点记录连接或任务生命周期、关键失败及已有汇总点，纯转换函数默认不加日志。",
+      "should_trigger": true,
+      "assertions": [
+        "不逐轮、逐消息记录成功；正常空轮询或预期断开不一律报故障。",
+        "不在纯字段映射函数补入口与退出日志。",
+        "不修改心跳、轮询、重连、采样配置或事件监听行为。"
+      ],
+      "files": []
+    },
+    {
+      "id": 22,
+      "prompt": "Python 模块已有 project_events.record_failure(action, fields, error) 作为项目采集入口，现有 except Exception as err: raise 中需记录文档保存失败，有 document_id。生产默认 ERROR、测试 INFO，用户只要求补日志注释。",
+      "expected_output": "使用已给项目入口补关键标识与原错误，保留 raise 和现有环境策略。",
+      "should_trigger": true,
+      "assertions": [
+        "调用已有 record_failure 接口，不另建标准 logging 实例或只用 print。",
+        "记录保存动作、document_id 与原异常，不把 exc_info 等标准库参数硬传给自定义接口。",
+        "保留原 raise，不擅自改变测试/生产级别、开关或采集配置。"
+      ],
+      "files": []
+    },
+    {
+      "id": 23,
+      "prompt": "Go 服务通过已注入 collector.RecordFailure(ctx, action, fields, err) 收集日志。现有 if err != nil { return err } 中有 documentID 和 ctx，请补诊断。测试使用内存收集器，部署配置未提供。",
+      "expected_output": "复用注入的 collector 记录上下文和 err，保留返回，说明部署生效范围尚未验证。",
+      "should_trigger": true,
+      "assertions": [
+        "使用已注入收集器，不另起 slog/log 或 fmt.Println 绕过现有采集链路。",
+        "保留 return err，不改签名、不假设 Go error 自带堆栈。",
+        "可以检查内存收集结果，但不宣称生产采集已生效，不擅自设置环境开关。"
+      ],
+      "files": []
+    },
+    {
+      "id": 24,
+      "prompt": "给混合 Python/Go/Node.js 服务补关键诊断日志。用户明确要求本次新增的详细诊断只在测试环境按已有开关启用，生产维持现状；各语言均已有项目 logger 或 collector。",
+      "expected_output": "通过各自项目入口按用户指定的既有开关记录，不自行扩大或缩小生效范围。",
+      "should_trigger": true,
+      "assertions": [
+        "服从用户指定的测试环境策略，不以生产排障为由强制生产开启。",
+        "不反向擅自关闭生产已有日志，也不绕过既有 logger/collector。",
+        "环境限制不构成打印凭据或完整敏感载荷的理由。"
+      ],
+      "files": []
+    },
+    {
+      "id": 25,
+      "prompt": "把整个 Node.js 服务的日志框架替换掉，重新设计采集管道、生产保留周期与全局异常恢复机制；本次没有代码日志或注释整改目标。",
+      "expected_output": "作为日志基础设施与错误处理设计任务处理，不套用本技能完成框架迁移。",
+      "should_trigger": false,
+      "assertions": [
+        "不把日志框架迁移和全局异常恢复当作本技能的补日志注释任务。"
+      ],
+      "files": []
     }
   ]
 }
