@@ -1,0 +1,192 @@
+{
+  "skill_name": "frontend-dev-rule",
+  "evals": [
+    {
+      "id": 1,
+      "should_trigger": true,
+      "mode": "design",
+      "prompt": "为一个虚构资料目录的 Vue 页面起草技术方案。当前已有分类选择和子分类选择，分类变化会异步获取子分类。详情页支持回填；需求没说明切换分类时是否保留子分类值。只讨论方案，不写代码。没有可用的独立评审工具。",
+      "expected_output": "给出有边界的设计草案，区分已知要求与待确认行为。",
+      "assertions": [
+        "识别清空与回填语义未确定，不静默决定。",
+        "考虑旧响应覆盖新选项及回填顺序。",
+        "不要求特定表单库或分层名称。",
+        "工具缺失不阻止草案，说明未独立复核。"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "should_trigger": true,
+      "mode": "design",
+      "prompt": "只评审这段前端方案，不提供代码：共享 MemberPicker 新增 multiple，计划把默认值从 false 改成 true，旧页面不改；验收只看新页面能选多人。请指出方案问题，不实施。",
+      "expected_output": "从方案直接定位旧调用方兼容风险与回归缺口。",
+      "assertions": [
+        "不因没有 diff 拒绝方案评审。",
+        "指出默认值改变影响旧调用方。",
+        "提出兼容或迁移选择及回归要求，不修改代码。"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "should_trigger": true,
+      "mode": "design",
+      "prompt": "一个全新的静态 Web 项目要做虚构读书清单页面：输入标题后添加，支持删除，不保存到服务器。只给简短实现设计，暂无代码、公共组件和设计系统。",
+      "expected_output": "按新项目事实给最小设计。",
+      "assertions": [
+        "不编造已有组件路径或规范。",
+        "不强制完整文档、三层目录或外部评审。",
+        "不增加登录、后端服务或持久化需求。"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "should_trigger": true,
+      "mode": "implementation",
+      "prompt": "请修改 fixture.js 中的 toRequest。现有代码是 export function toRequest(form) { return {categoryId: form.categoryId || null, title: form.title.trim()}; }。契约：categoryId 是数字或 null，0 是有效 ID；title 是字符串。只修正 ID 为 0 时的行为，保持字段和其他行为不变。使用 Node 自带断言验证，不引入依赖。可在分配的临时工作目录创建文件。",
+      "expected_output": "进行范围内的小修复及针对性验证。",
+      "assertions": [
+        "0 保留为 0，null 保持 null。",
+        "保持 title.trim()。",
+        "使用现有 Node 能力验证，不添加工具链或要求完整方案。"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "should_trigger": true,
+      "mode": "implementation",
+      "prompt": "只输出 React 组件修复建议，不执行代码。代码 useEffect(() => { load(id).then(setItem); }, [id]);。load 由调用方传入，可返回 Promise，没有取消接口。用户连续切换 id 时会显示前一次结果。保持现有 props，不加依赖。",
+      "expected_output": "处理过期异步结果并说明验证边界。",
+      "assertions": [
+        "使用局部失效标记、序号等兼容方式。",
+        "考虑 effect 清理和旧结果，不臆造 load 取消接口。",
+        "不改变 props 或安装库，不宣称运行验证完成。"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "should_trigger": true,
+      "mode": "implementation",
+      "prompt": "一个已有页面只要求把按钮文案从“提交”改为“保存”，点击逻辑和样式不变。本次仅提供 JSX 片段 <button onClick={save}>提交</button>，没有本地项目或浏览器。请给修改结果和验证说明。",
+      "expected_output": "返回局部修改并说明不能进行运行验证。",
+      "assertions": [
+        "仅修改按钮文案。",
+        "不要求完整测试套件或多轮评审。",
+        "不宣称真实文件已写入或浏览器检查通过。"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "should_trigger": true,
+      "mode": "review",
+      "prompt": "只审查这个 TypeScript 变化。组件原 onSelect?: (id: string) => void，原调用 onSelect?.(item.id)；新代码保持类型不变但改成 onSelect?.(item)。已知 item: { id: string; label: string }，父组件为 id => fetch(`/members/${id}`)。项目要求类型检查。不要改代码。",
+      "expected_output": "指出参数契约破坏及调用方影响。",
+      "assertions": [
+        "报告 Blocking，并说明 item 对象与 string 契约冲突。",
+        "联系父组件 URL 行为及类型检查。",
+        "给最小修复方向，不虚构行号或已执行结果。"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "should_trigger": true,
+      "mode": "review",
+      "prompt": "只审查：项目通用标签组件统一排序显示标签。新页面按用户拖拽顺序展示标签，因此用了模块内独立组件。两者 DOM 很相似，命名符合项目约定，未提供其他代码或强制复用规定。",
+      "expected_output": "不因外形相似判为缺陷。",
+      "assertions": [
+        "认可排序语义差异。",
+        "不将独立实现判为 Blocking。",
+        "说明有限上下文，不能宣称全面验证通过。"
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "should_trigger": true,
+      "mode": "review",
+      "prompt": "审查一个前后端混合改动：前端 ProfileForm 将必填字符串 email 改为可为空，后端接口契约仍是必填字符串；另有 PostgreSQL 索引变更。没有给后端实现和执行计划。请按本技能审查，不修改。",
+      "expected_output": "识别潜在提交契约风险，区分可空编辑态与实际请求；缺少提交证据时要求确认，不假装完成数据库审查。",
+      "assertions": [
+        "识别可空编辑态与必填请求契约的潜在冲突，核查提交校验和转换；未提供提交证据时不直接判定 Blocking。",
+        "说明后端和索引验证不在本技能证据范围。",
+        "不执行数据库操作或声称索引无风险。"
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "should_trigger": false,
+      "mode": "boundary",
+      "prompt": "请评审纯 Python 后端的数据清理任务，没有前端、页面或接口消费方变更。",
+      "expected_output": "不触发前端工程流程。",
+      "assertions": [
+        "明确纯后端任务不属于本技能自动触发范围。"
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "should_trigger": false,
+      "mode": "boundary",
+      "prompt": "画一张虚构书店的水彩插画，不做网页、代码或交互。",
+      "expected_output": "作为视觉素材任务处理。",
+      "assertions": [
+        "不要求前端方案、路由、组件或测试。"
+      ],
+      "files": []
+    },
+    {
+      "id": 12,
+      "should_trigger": true,
+      "mode": "review",
+      "prompt": "只审查一个页面 diff：仅将局部变量 list 改名 records，命名与邻近代码不同但无强制规则，代码行为不变，也没有新增组件测试。",
+      "expected_output": "不以风格和缺少大型测试阻塞。",
+      "assertions": [
+        "不将命名差异自动判为 Blocking。",
+        "不因无组件测试要求阻塞。"
+      ],
+      "files": []
+    },
+    {
+      "id": 13,
+      "should_trigger": true,
+      "mode": "design",
+      "prompt": "项目明确规定共享组件变更须独立评审后才能实施。方案草案已完成，但现在所有评审工具不可用。请告诉我当前状态。",
+      "expected_output": "区分完成草案、自检与独立评审准入。",
+      "assertions": [
+        "不绕过项目门禁。",
+        "标注未独立复核及尚不能实施，不编造评审通过。"
+      ],
+      "files": []
+    },
+    {
+      "id": 14,
+      "should_trigger": false,
+      "mode": "boundary",
+      "prompt": "帮我把已有后端服务部署到测试集群，不涉及前端代码或方案。",
+      "expected_output": "不以本技能启动部署。",
+      "assertions": [
+        "不把前端技能当作部署权限或发布能力。"
+      ],
+      "files": []
+    },
+    {
+      "id": 15,
+      "should_trigger": true,
+      "mode": "review",
+      "prompt": "前端新增帮助提示。阅读相邻旧组件时发现一个多年前的定时器没有清理，本次 diff 没碰该组件。没有给调用关系。只审本次变更。",
+      "expected_output": "区分新增改动与无关联的历史问题。",
+      "assertions": [
+        "不将旧问题包装成本次引入的回归。",
+        "不擅自扩大修改或审查范围。"
+      ],
+      "files": []
+    }
+  ]
+}

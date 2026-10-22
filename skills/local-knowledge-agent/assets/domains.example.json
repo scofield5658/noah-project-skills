@@ -1,0 +1,32 @@
+[
+  {
+    "id": "product-platform",
+    "label": "Product Platform",
+    "description": "Knowledge owned by the Product Platform system family.",
+    "aliases": [
+      "product-system"
+    ],
+    "workspace_contains": [
+      "/work/product-platform/"
+    ],
+    "include_when": [
+      "The Product Platform owns the behavior, data, or decision."
+    ],
+    "exclude_when": [
+      "The topic is reusable engineering guidance without one product owner."
+    ]
+  },
+  {
+    "id": "general",
+    "label": "General",
+    "description": "Reusable knowledge without one configured product owner.",
+    "aliases": [
+      "other"
+    ],
+    "workspace_contains": [],
+    "include_when": [
+      "The knowledge is demonstrably product-neutral."
+    ],
+    "exclude_when": []
+  }
+]

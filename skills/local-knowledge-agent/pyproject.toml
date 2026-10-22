@@ -1,0 +1,16 @@
+[project]
+name = "local-knowledge-agent-cli"
+version = "0.1.0"
+description = "Deterministic local helpers for the local-knowledge-agent Skill"
+requires-python = "==3.12.13"
+dependencies = []
+
+[project.scripts]
+local-knowledge-agent = "local_knowledge_agent.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.2,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "local_knowledge_agent"
