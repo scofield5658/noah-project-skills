@@ -362,7 +362,7 @@ def validate_config(
     if profile_id != "default" and profile_file is None:
         raise ConfigError("custom authoring_profile requires a file")
 
-    config["preferred_remote_hosts"] = _preferred_remote_hosts(config.get("preferred_remote_hosts", []))
+    config["preferred_remote_hosts"] = _preferred_remote_hosts(config.get("preferred_remote_hosts", ["github.com"]))
     config["domains"] = normalized_domains
     config["default_domain"] = default_domain
     config["storage_backend"] = backend
@@ -1160,7 +1160,7 @@ def select_repository_remote(
     repository_root: Path,
     *,
     runner: Runner = _default_runner,
-    preferred_remote_hosts: Sequence[str] = (),
+    preferred_remote_hosts: Sequence[str] = ("github.com",),
 ) -> dict[str, Any]:
     """Select a safe fetch remote by configured host order, then origin."""
 
@@ -1634,7 +1634,7 @@ def _discover_repository_remotes(
     *,
     platform: str,
     cache: dict[Path, dict[str, Any]],
-    preferred_remote_hosts: Sequence[str] = (),
+    preferred_remote_hosts: Sequence[str] = ("github.com",),
 ) -> tuple[dict[str, str], list[dict[str, str]]]:
     windows = platform.lower() in {"windows", "win32", "nt"}
     remotes: dict[str, str] = {}
@@ -1714,7 +1714,7 @@ def normalize_paths(
     stage: str,
     platform: str,
     apply: bool,
-    preferred_remote_hosts: Sequence[str] = (),
+    preferred_remote_hosts: Sequence[str] = ("github.com",),
 ) -> dict[str, Any]:
     """Preview or atomically apply path normalization to one knowledge stage."""
 

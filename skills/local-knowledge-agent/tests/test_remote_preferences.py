@@ -32,10 +32,20 @@ class RemotePreferenceTests(unittest.TestCase):
         result = cli.select_repository_remote(Path('.'), runner=remote_runner, preferred_remote_hosts=['missing.test'])
         self.assertEqual(result['remote_name'], 'origin')
 
+    def test_default_github_and_explicit_opt_out(self):
+        def runner(command):
+            remotes = {'origin': 'https://gitlab.example.test/team/repo.git',
+                       'upstream': 'git@github.com:example/repo.git'}
+            output = '\n'.join(remotes) if command[-1] == 'remote' else remotes[command[-1]]
+            return subprocess.CompletedProcess(command, 0, output, '')
+        self.assertEqual(cli.select_repository_remote(Path('.'), runner=runner)['remote_name'], 'upstream')
+        self.assertEqual(cli.select_repository_remote(Path('.'), runner=runner, preferred_remote_hosts=[])['remote_name'], 'origin')
+        self.assertEqual(cli.select_repository_remote(Path('.'), runner=runner, preferred_remote_hosts=['gitlab.example.test'])['remote_name'], 'origin')
+
     def test_config_defaults_and_rejects_urls_arguments_and_wildcards(self):
         config = json.loads((ROOT / 'assets/config.example.json').read_text())
         config.pop('preferred_remote_hosts', None)
-        self.assertEqual(cli.validate_config(config)['preferred_remote_hosts'], [])
+        self.assertEqual(cli.validate_config(config)['preferred_remote_hosts'], ['github.com'])
         config['preferred_remote_hosts'] = ['CODE.EXAMPLE.TEST']
         self.assertEqual(cli.validate_config(config)['preferred_remote_hosts'], ['code.example.test'])
         for invalid in ['example.test', ['https://example.test'], ['*.example.test'], ['example.test:443'], ['example.test\n'], ['-host'], ['a..test'], ['']]:

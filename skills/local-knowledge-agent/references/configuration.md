@@ -206,7 +206,7 @@ Draw.io Skill 来源为 <https://github.com/jgraph/drawio-mcp>。仅安装到当
 
 `normalize-paths` 默认预览受影响文件、替换数量、新增或更新的仓库声明及警告。没有 `--yes` 的 `--apply` 会被拒绝。命令将 Markdown 中的个人本地路径（包括 frontmatter 和代码块）转换为使用 `/` 的可移植引用。知识库内部路径转换为 `wiki/...` 或 `raw/...`。只有文档的 `source_refs` 中已有安全的 `'repository:<repository-name>=<remote-url>'` 声明后，外部 Git 路径才缩短为 `<repository-name>/<repository-relative-path>`。
 
-仓库路径迁移时，CLI 离线读取本地 Git fetch remote。默认优先 `origin`，再按 remote 名称排序。顶层 `preferred_remote_hosts` 默认为 `[]`；例如 `["code.example.test"]`，会优先匹配该主机及其子域。多个配置项按列表顺序排序，同级优先 `origin`。只接受 DNS 主机名，不接受 URL、端口、通配符或命令参数。公开版 0.2.0 起不预设组织域名，升级时如需保留原偏好，须显式配置；已声明的安全仓库地址保持不变。持久化前移除 HTTPS 用户信息及 URL 查询参数、片段。Git、仓库或安全 remote 不可用时，保留原路径并报告警告。`Codes/Work/<group>` 等工作区根路径不代表具体仓库，因此保留并报告 `workspace_path_unresolved`，不猜测归属。转换成功时移除本地 `file://` 前缀，添加 `path_base: knowledge_root`，通过同目录临时文件加原子替换写入；远程 URL 和非个人系统路径保持不变。
+仓库路径迁移时，CLI 离线读取本地 Git fetch remote。默认优先 GitHub，其次 `origin`，再按 remote 名称排序。顶层 `preferred_remote_hosts` 默认为 `["github.com"]`；可以配置其他兼容 Git 服务的主机，例如 `["code.example.test"]`，会优先匹配该主机及其子域。多个配置项按列表顺序排序，同级优先 `origin`；配置 `[]` 则取消主机偏好。只接受 DNS 主机名，不接受 URL、端口、通配符或命令参数。公开版 0.2.0 起不预设组织域名，升级时如需保留原偏好，须显式配置；已声明的安全仓库地址保持不变。持久化前移除 HTTPS 用户信息及 URL 查询参数、片段。Git、仓库或安全 remote 不可用时，保留原路径并报告警告。`Codes/Work/<group>` 等工作区根路径不代表具体仓库，因此保留并报告 `workspace_path_unresolved`，不猜测归属。转换成功时移除本地 `file://` 前缀，添加 `path_base: knowledge_root`，通过同目录临时文件加原子替换写入；远程 URL 和非个人系统路径保持不变。
 
 ## 存储后端语义
 

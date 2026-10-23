@@ -49,5 +49,7 @@
     "id": "default",
     "file": null
   },
-  "preferred_remote_hosts": []
+  "preferred_remote_hosts": [
+    "github.com"
+  ]
 }

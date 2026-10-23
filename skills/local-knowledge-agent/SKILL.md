@@ -68,7 +68,7 @@ Draw.io 是可选增强，普通知识工作不依赖它。使用 `local-knowled
 
 ## 可移植路径约定
 
-新建或实质性改写的笔记不得包含 `/Users/<user>/`、`/home/<user>/`、Windows 用户目录、`file://` 本地 URI，或 `Codes/Work/...` 等本机工作区目录片段。使用 `wiki/...`、`raw/...` 或相对于 `knowledge_root` 的其他路径。引用外部 Git 仓库时，在 `source_refs` 中记录安全的拉取远程地址：`'repository:<repository-name>=<remote-url>'`。仓库名使用本地仓库目录名，即使它与远程项目名不同；随后以 `<repository-name>/<path-inside-repository>` 引用文件。存在多个远程地址时，默认优先 `origin`，再按 remote 名称排序。可在用户配置中设置 `preferred_remote_hosts`，按列表顺序优先匹配该主机及其子域；同级仍优先 `origin`。公开版 0.2.0 起不预设任何组织的域名偏好；需要保留既有偏好时应显式配置。不得保存 HTTPS 用户信息、URL 查询参数、片段或其他嵌入式凭据。
+新建或实质性改写的笔记不得包含 `/Users/<user>/`、`/home/<user>/`、Windows 用户目录、`file://` 本地 URI，或 `Codes/Work/...` 等本机工作区目录片段。使用 `wiki/...`、`raw/...` 或相对于 `knowledge_root` 的其他路径。引用外部 Git 仓库时，在 `source_refs` 中记录安全的拉取远程地址：`'repository:<repository-name>=<remote-url>'`。仓库名使用本地仓库目录名，即使它与远程项目名不同；随后以 `<repository-name>/<path-inside-repository>` 引用文件。存在多个远程地址时，默认优先 `github.com` 及其子域，再优先 `origin`，最后按 remote 名称排序。可在用户配置中设置 `preferred_remote_hosts`，按列表顺序优先匹配其他兼容 Git 服务的主机及其子域；同级仍优先 `origin`。设置空列表则直接优先 `origin`。公开版 0.2.0 起不预设公司域名偏好；需要保留既有偏好时应显式配置。不得保存 HTTPS 用户信息、URL 查询参数、片段或其他嵌入式凭据。
 
 Git 或安全 remote 不可用时，保留原外部路径并报告警告，不生成无法追溯的仓库相对引用。`Codes/Work/<group>` 等不能识别具体仓库的工作区根路径也应保留并标为未解析，不猜测仓库名。不改写远程 URL 或 `/var/log/...` 等有实际意义的非个人系统路径。
 
