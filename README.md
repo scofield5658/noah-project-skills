@@ -67,7 +67,7 @@ rg '^name: software-complexity-design$' \
 - `log-and-comment-rule`: add or review focused backend logs and comments across Java, Python, Go, and other languages, following each project's existing logging and documentation conventions.
 - `frontend-code-review`: review concrete code changes for correctness, project consistency, reuse, clarity, and the smallest complete delivery.
 - `frontend-technical-solution-writer`: draft and review Chinese frontend technical plans covering scope, data contracts, acceptance, and rollback.
-- `skill-creator-extra-rules`: create, modify, migrate, or review agent skills with checks for local runtimes, scripts, CLI, MCP, credentials, install verification, and missing-dependency fallbacks; also confirm pure-document skills declare no local runtime.
+- `skill-creator-extra-rules`: create, modify, migrate, or review agent skills with checks for discovery and input/output contracts, runtime dependencies, credentials, behavior evidence, packaging, versioning, and authorized distribution.
 - `local-knowledge-agent`: ingest research or Web Clipper material into a local Markdown knowledge base, archive stable Q&A or approved plans, and run health checks along a fixed Clippings → raw → wiki lifecycle.
 
 Install and discovery for `multi-agent-operate-rule` follow the same directory convention:
