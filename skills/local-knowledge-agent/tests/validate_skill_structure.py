@@ -74,7 +74,7 @@ def validate_skill(root: Path) -> list[str]:
             "local_absolute_path",
             "repository:<repository-name>=<remote-url>",
             "local_workspace_path",
-            "prefer `origin`",
+            "gf.com.cn",
         )
         missing = [marker for marker in required_path_markers if marker not in text]
         if missing:

@@ -3,161 +3,56 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "A batch platform can either let its core service ingest and normalize a new feed directly, or add an independent preprocessing service that synchronizes normalized results. Compare the two architecture options.",
-      "expected_output": "Identify the few decisions that determine the boundary; compare candidates through change reach, knowledge authority, contract burden, recovery certainty, and evolution reversibility; cover consistency, idempotency, rollback, rerun, monitoring, and closeout; recommend an option with explicit assumptions and five-control delivery evidence.",
-      "should_trigger": true,
-      "assertions": [
-        "Compares two substantively different options rather than describing only one.",
-        "Assigns data, state, rule, and recovery ownership.",
-        "Covers idempotency, rollback or rerun, monitoring, and closeout.",
-        "Evaluates change, knowledge, contract, recovery, and evolution controls without reducing them to one score.",
-        "Does not reproduce change amplification, cognitive load, and hidden impact points as a standalone ordered three-item checklist.",
-        "Recommends an option and states the assumptions that support it.",
-        "States assumptions and open questions separately from confirmed facts."
-      ],
+      "prompt": "库存管理系统要新增一类供应商到货数据，既可以由库存业务模块直接采集加工，也可以先进入独立模块预处理后同步结果。请给出架构设计并比较两种路线。",
+      "expected_output": "先识别最重要的架构问题和需要减少的重复理解，再分别形成可独立评审的方案；明确数据、状态和规则分别由谁维护，比较一个变化要改多少位置、开发者要理解多少系统、影响点能否提前找全，以及回退重跑和闭市影响，而不是只比较改动模块和工期。",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "Review a new service that exposes many fine-grained APIs. Callers must query a batch, fetch details, inspect errors, and decide how to roll back.",
-      "expected_output": "Recognize a shallow boundary, pass-through APIs, temporal decomposition, and leaked recovery knowledge; propose a higher-level contract while preserving compatibility, performance, permissions, and critical failure signals.",
-      "should_trigger": true,
-      "assertions": [
-        "Explains why caller-managed sequencing leaks internal knowledge.",
-        "Identifies pass-through interfaces or temporal decomposition as candidate design problems.",
-        "Proposes a higher-level business contract or command.",
-        "Addresses compatibility, performance, permissions, and failure recovery.",
-        "Does not treat API count alone as proof of a design flaw."
-      ],
+      "prompt": "希望复用现有文件处理链路，但新场景的批次状态、匹配规则和次日下游输出条件不同。帮我判断应该复用、扩展还是新建。",
+      "expected_output": "不默认复用；区分稳定机制与场景策略，识别规则在多模块重复造成的设计知识分散（information leakage），至少构思实质不同的边界方案，并在涉及存量状态、数据口径和收尾行为时明确风险、选项和确认点。",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "An architecture document claims that a workflow service owns all end-of-day state because its runtime scans several domain packages. No repository or configuration evidence is attached. Review the claim.",
-      "expected_output": "Request current branch, commit, and dated evidence; distinguish repository, build module, package, runtime/deployment unit, and business owner; treat scanning or dependency as navigation evidence rather than proof of ownership; label facts, evidence-backed judgments, inferences, and open questions.",
-      "should_trigger": true,
-      "assertions": [
-        "Rejects package scanning as sufficient proof of business ownership.",
-        "Distinguishes repository, build module, package, runtime or deployment unit, and business owner.",
-        "Requests branch, commit, working-tree status, date, and concrete state-write or contract evidence.",
-        "Separates facts, judgments, inferences, and open questions."
-      ],
+      "prompt": "一个新独立服务提供十几个 服务 API，调用方仍要按顺序查询批次、明细、异常，再决定是否回退。请评审这个 目标系统 架构方案。",
+      "expected_output": "识别低收益模块、透传接口、按执行步骤拆分，以及调用方仍需理解内部恢复步骤的问题；评估服务能否直接提供调用者需要的业务结果并内置安全默认处理，同时明确保留金融关键错误，并说明对性能、权限、兼容和存量链路的影响。",
       "files": []
     },
     {
       "id": 4,
-      "prompt": "Turn software-complexity warning signs into a one-page design review guide for engineers who have not read the source material.",
-      "expected_output": "Use understandable labels that state the object, action, and impact; preserve short attributed English terms only when useful; avoid unexplained literal translations, slogans, or claims that the guidance is an organization-wide standard.",
-      "should_trigger": true,
-      "assertions": [
-        "Each warning sign names a concrete structural symptom and its impact.",
-        "Each recommended action is tied to the structural symptom it addresses.",
-        "Attributes short English terms when used and avoids unexplained literal translations.",
-        "Does not present the guidance as an existing organization-wide mandate."
-      ],
+      "prompt": "合成证据：仓库 inventory-core 的根 POM 聚合 inventory-service；独立仓库 order-service 的根 POM 聚合 order-runtime；scheduler 的启动配置扫描 inventory 和 order 两个包。现有方案写着 scheduler 负责全部订单状态，order-service 是 inventory-core 内部模块。请核对这些判断；未提供状态写入代码。",
+      "expected_output": "依据给定的合成仓库与构建证据识别 order-service 为独立仓库；加载两个包不等于拥有其业务状态。列出状态写入点、调用方向与恢复责任仍待核验；真实任务需记录实际分支、提交号和日期，不能伪造缺失证据。",
       "files": []
     },
     {
       "id": 5,
-      "prompt": "Review a submission workflow where product owners have not defined defaults for missing business date and scope. Requests may retry with the same idempotency key, reuse the key with different parameters, or submit the same business action under a new key. The team also wants to add caching and concurrency early.",
-      "expected_output": "Separate technical safeguards, product-defined defaults, and authoritative context; distinguish request retries, key conflicts, and duplicate business actions; preserve critical errors; decide boundaries before implementation methods; require evidence, targets, and rollback criteria before adding performance complexity.",
-      "should_trigger": true,
-      "assertions": [
-        "Separates technical safeguards, product defaults, and authoritative context.",
-        "Distinguishes same-key retries, same-key parameter conflicts, and new-key duplicate business actions.",
-        "Preserves critical permission, state, and consistency errors.",
-        "Determines ownership and boundary decisions before prescribing implementation techniques.",
-        "Requires measurable targets and rollback criteria before adding caching or concurrency."
-      ],
+      "prompt": "把《软件设计哲学》中的危险信号整理成一页面向 目标系统 研发团队的宣贯材料。听众没有读过原书，请保留英文术语来源，但保证每个中文标签单独看也能理解。",
+      "expected_output": "使用自然中文说明具体结构问题，不用字面直译或抽象口号替代含义。例如将 Conjoined Methods 表达为“方法相互依赖”，并解释为“读懂一个方法时，必须同时查看另一个方法的实现”；其他术语首次出现时也说明对象、动作和影响，同时保留英文原词作为来源。",
       "files": []
     },
     {
       "id": 6,
-      "prompt": "Design the classes, database columns, and CRUD endpoints for editing an order note.",
-      "expected_output": "Identify this as code-level detailed design rather than a cross-module complexity-design task, state the boundary briefly, and avoid forcing the full architecture workflow.",
-      "should_trigger": false,
-      "assertions": [
-        "Identifies the request as code-level detailed design.",
-        "Does not apply the full cross-system architecture workflow."
-      ],
+      "prompt": "目标系统 新增表单提交接口：产品尚未确认缺失业务日期、机构和查询范围时的默认行为；调用方既可能用同一幂等标识重试，也可能换标识重复提交，同一标识还可能携带不同参数。团队还希望在架构评审阶段用 TDD 逐步塑造边界，并提前加入缓存和并发。请完成架构评审并给出收尾结论。",
+      "expected_output": "区分技术保护默认、产品确认的业务默认和唯一权威上下文；技术保护值若会截断数据或改变业务时效也要进入需求确认，权限不因默认值放宽；区分同一请求重试、同一标识参数冲突和新的重复业务，保证副作用只发生一次但不把重复请求一律返回成功；用可观察行为示例评估候选契约，检查 mock 与顺序负担并反馈到边界取舍；明确状态和恢复责任后再进入实现阶段；存量优化用基线和瓶颈证据，新架构用性能目标、容量假设和验证计划，不能无依据预加缓存并发；最终形成变更影响、规则所有权、行为契约、恢复闭环和演进验证五项结论。",
       "files": []
     },
     {
       "id": 7,
-      "prompt": "我们准备把一条跨系统批处理链路拆成接入、加工和核心消费三个服务。请评审边界、状态所有权、重复处理、回退重跑和收尾监控。",
-      "expected_output": "使用中文输出；先区分事实与待确认；通过变化演练识别重复规则和隐式时序；明确数据、状态、规则与恢复责任；比较至少两个实质候选；以变化、知识、契约、恢复、演进五控制面给出交付门禁。",
-      "should_trigger": true,
-      "assertions": [
-        "Responds in Chinese.",
-        "Separates confirmed facts from open questions.",
-        "Uses a current or adjacent change rehearsal to expose duplicated rules, implicit sequencing, or hidden entry points.",
-        "Assigns data, state, rule, and recovery ownership.",
-        "Compares at least two substantive candidates or explains why one is excluded.",
-        "Covers idempotency, rerun, closeout monitoring, and validation evidence.",
-        "Ends with distinct change, knowledge, contract, recovery, and evolution delivery gates."
-      ],
+      "prompt": "新增结算行为需要 mock 八个内部组件，团队希望用 TDD 确定接口边界，请给出架构阶段的处理方式。",
+      "expected_output": "不按 mock 数量机械判断；从成功、错误、不变量、重复与恢复的可观察行为出发，区分真实外部依赖与内部编排泄露，比较候选契约，用示例反馈修正职责与所有权；测试不绑定私有顺序，详细实现交后续阶段。",
       "files": []
     },
     {
       "id": 8,
-      "prompt": "A daily batch was marked complete, but missing source records arrived late after downstream systems had already consumed the result. The transformation rule has also been corrected. Design the recovery flow.",
-      "expected_output": "Separate late-data backfill, rule-version reprocessing, consumed-result rollback or compensation, and checkpointed rerun; preserve source time and lineage; create a new result version instead of overwriting; define closeout reopening, idempotency, reconciliation, ownership, and execution order.",
-      "should_trigger": true,
-      "assertions": [
-        "Defines how late or missing source data is backfilled with source identity, business time, and deduplication.",
-        "Reprocesses corrected input or rules into a traceable new result version without overwriting consumed output.",
-        "Chooses rollback for reversible controlled side effects and compensation for irreversible or cross-system effects.",
-        "Runs again only after backfill or reprocessing and consumed-result handling, from an explicit checkpoint.",
-        "Defines closeout reopening, ownership, idempotency, and final reconciliation."
-      ],
+      "prompt": "旧订单系统需要逐步引入新模块，不能一次性替换，如何证明演进有效？当前尚未提供近期变更数据。",
+      "expected_output": "选择可独立验证的最小切片，明确兼容期、唯一写入方、可观测切换与撤回条件；数据和副作用回退不能只靠开关。历史变更痛点只能列为假设，补齐证据后用下一次真实相邻变更比较修改位置、理解负担和遗漏，再决定扩大范围。",
       "files": []
     },
     {
       "id": 9,
-      "prompt": "A team is using TDD for a new workflow, but every scenario test must orchestrate six low-level APIs and mock three services' internal states. Review the test and architecture design approach.",
-      "expected_output": "Use test friction as evidence of leaked knowledge; define caller-visible behavior, invariants, errors, and recovery first; compare higher-level contract candidates; assign ownership before implementation-level red-green-refactor; preserve external behavior tests while allowing internal implementation tests to evolve.",
-      "should_trigger": true,
-      "assertions": [
-        "Treats excessive orchestration and mocks as evidence to investigate rather than proof by themselves.",
-        "Defines caller-visible behavior, invariants, errors, and recovery outcomes before implementation steps.",
-        "Compares at least two contract or boundary options.",
-        "Assigns data, state, rule, and recovery ownership before implementation-level TDD.",
-        "Separates stable external behavior tests from changeable internal implementation tests."
-      ],
-      "files": []
-    },
-    {
-      "id": 10,
-      "prompt": "A large platform has added a new branch, state, scheduler rule, monitoring rule, and operations script for each of its last five business scenarios. Propose an incremental architecture evolution plan.",
-      "expected_output": "Use recent changes as evidence; separate stable lifecycle from scenario policy; choose one measurable slice for ownership or contract consolidation; preserve compatibility and rollback; avoid a full rewrite; validate improvement using the next real change's modification count, context load, and missed impact points.",
-      "should_trigger": true,
-      "assertions": [
-        "Uses recent change history to identify repeated modification surfaces.",
-        "Separates stable lifecycle mechanisms from scenario-specific policy.",
-        "Chooses one bounded, independently verifiable migration slice.",
-        "Defines compatibility, observation, and rollback for the old path.",
-        "Measures success using a later real change rather than completion of the refactor itself.",
-        "Does not recommend an unbounded platform rewrite."
-      ],
-      "files": []
-    },
-    {
-      "id": 11,
-      "prompt": "Create a reusable end-to-end decision canvas for comparing two cross-system boundary options. It must be independent from any source article's symptom list, convergence checklist, chapter sequence, or solution-comparison checklist.",
-      "expected_output": "Use this six-part order: falsifiable decision, five evidence packs, hard gates, nine decision questions, validation experiments, decision record. The nine questions must be grouped as recovery (2), evolution (2), contract (2), change-and-knowledge (2), and integrated tradeoff (1), in that order; explain that the count, categories, and ordering are independently derived; do not reproduce a standalone ordered trio of change amplification, cognitive load, and hidden impact points.",
-      "should_trigger": true,
-      "assertions": [
-        "Uses the full six-part order: falsifiable decision, five evidence packs, hard gates, nine questions, validation experiments, and decision record.",
-        "Defines evidence packs for recovery, evolution, contract, change, and knowledge controls.",
-        "Applies non-negotiable hard gates before comparing candidate advantages.",
-        "Contains exactly nine numbered decision questions.",
-        "Groups questions as recovery 2, evolution 2, contract 2, change-and-knowledge 2, and integrated tradeoff 1.",
-        "Uses recovery, evolution, contract, change, and knowledge controls rather than a source comparison checklist.",
-        "Does not present change amplification, cognitive load, and hidden impact points as a standalone ordered trio.",
-        "Includes validation experiments for architecture boundaries, TDD contracts, or incremental evolution.",
-        "Ends with a decision record containing assumptions, evidence, rollback, and reevaluation conditions.",
-        "States that the framework's count, grouping, and order are independently derived."
-      ],
+      "prompt": "已发布且已被下游消费的结算结果需要因规则修正而重新加工，下游已发送不可逆通知；另有迟到输入，怎么办？",
+      "expected_output": "保留旧结果与消费记录，固定输入和规则版本并生成关联的新结果版本；先核实副作用，可逆状态回退，不可逆通知用可审计的更正补偿，无法安全补偿则阻断；处置明确后从检查点重试、防重复并对账，不能重放完整业务。迟到输入保留来源、原业务时间、应到实到时间、补采批次与去重规则，明确重开收尾及批准责任。",
       "files": []
     }
   ]

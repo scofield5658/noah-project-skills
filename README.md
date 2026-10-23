@@ -65,7 +65,9 @@ rg '^name: software-complexity-design$' \
 - `software-complexity-design`: design and review project architecture, TDD-oriented behavior contracts, cross-system recovery, and incremental evolution of large codebases with an emphasis on controlling change complexity.
 - `multi-agent-operate-rule`: coordinate one goal across agents or separate sessions, with fixed input versions, explicit roles, versioned handoffs, and a named resume point.
 - `log-and-comment-rule`: add or review focused backend logs and comments across Java, Python, Go, and other languages, following each project's existing logging and documentation conventions.
-- `frontend-dev-rule`: write or review frontend technical plans, implement pages and components, or review frontend code changes, switching among design, implementation, and review guides as needed.
+- `frontend-code-review`: review concrete code changes for correctness, project consistency, reuse, clarity, and the smallest complete delivery.
+- `frontend-technical-solution-writer`: draft and review Chinese frontend technical plans covering scope, data contracts, acceptance, and rollback.
+- `jira-subtask-splitting`: plan, deduplicate, and manage Web development subtasks and related defects through the public `gitee-team-manager` dependency.
 - `skill-creator-extra-rules`: create, modify, migrate, or review agent skills with checks for local runtimes, scripts, CLI, MCP, credentials, install verification, and missing-dependency fallbacks; also confirm pure-document skills declare no local runtime.
 - `local-knowledge-agent`: ingest research or Web Clipper material into a local Markdown knowledge base, archive stable Q&A or approved plans, and run health checks along a fixed Clippings → raw → wiki lifecycle.
 

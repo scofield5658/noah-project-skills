@@ -1,0 +1,4 @@
+interface:
+  display_name: "前端技术方案编写"
+  short_description: "为当前项目起草并检查前端技术方案"
+  default_prompt: "使用 $frontend-technical-solution-writer 讨论、起草并检查 用户指定项目的中文 Markdown 前端技术方案。"

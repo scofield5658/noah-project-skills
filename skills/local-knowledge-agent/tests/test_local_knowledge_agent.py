@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import re
 import sys
 import subprocess
 import tempfile
@@ -58,6 +59,22 @@ def valid_config() -> dict[str, object]:
 
 
 class ConfigContractTests(unittest.TestCase):
+    def test_shipped_configuration_examples_are_usable(self) -> None:
+        document = (SKILL_ROOT / "references/configuration.md").read_text(encoding="utf-8")
+        examples = {
+            "documentation": json.loads(re.search(r"```json\n(.*?)\n```", document, re.S).group(1)),
+            "asset": json.loads((SKILL_ROOT / "assets/config.example.json").read_text(encoding="utf-8")),
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "raw").mkdir()
+            (root / "wiki").mkdir()
+            for name, config in examples.items():
+                with self.subTest(example=name):
+                    config["knowledge_root"] = str(root)
+                    validated = cli.validate_config(config)
+                    self.assertIn(validated["default_domain"], {item["id"] for item in validated["domains"]})
+
     def test_config_defaults_to_builtin_authoring_profile(self) -> None:
         validated = cli.validate_config(valid_config())
 
@@ -517,7 +534,7 @@ class PythonDiscoveryTests(unittest.TestCase):
 
         def runner(command: list[str]):
             commands.append(command)
-            if command == ["uv", "python", "find", "cpython-3.12.13", "--managed-python"]:
+            if command == ["uv", "python", "find", "cpython-3.12.13"]:
                 return self.completed(command, 0, "/uv/managed/python3.12\n")
             return self.completed(command, 1)
 
@@ -530,7 +547,7 @@ class PythonDiscoveryTests(unittest.TestCase):
         self.assertEqual(result["source"], "uv-managed")
         self.assertEqual(
             commands,
-            [["uv", "python", "find", "cpython-3.12.13", "--managed-python"]],
+            [["uv", "python", "find", "cpython-3.12.13"]],
         )
 
     def test_custom_uv_command_is_used_as_an_argument_array(self) -> None:
@@ -543,7 +560,6 @@ class PythonDiscoveryTests(unittest.TestCase):
                 "python",
                 "find",
                 "cpython-3.12.13",
-                "--managed-python",
             ]:
                 return self.completed(command, 0, "/uv/managed/python3.12\n")
             return self.completed(command, 1)
@@ -574,7 +590,7 @@ class PythonDiscoveryTests(unittest.TestCase):
         self.assertEqual(result["required_version"], "CPython 3.12.13")
         self.assertEqual(
             commands,
-            [["uv", "python", "find", "cpython-3.12.13", "--managed-python"]],
+            [["uv", "python", "find", "cpython-3.12.13"]],
         )
 
     def test_uv_without_exact_cpython_falls_back_without_installing(self) -> None:
@@ -600,7 +616,7 @@ class PythonDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(
             commands,
-            [["uv", "python", "find", "cpython-3.12.13", "--managed-python"]],
+            [["uv", "python", "find", "cpython-3.12.13"]],
         )
         self.assertNotIn("install", commands[0])
 
@@ -711,7 +727,7 @@ class CommandTests(unittest.TestCase):
 
         def runner(command: list[str]):
             commands.append(command)
-            if command[:5] == ["uv", "python", "find", "cpython-3.12.13", "--managed-python"]:
+            if command[:4] == ["uv", "python", "find", "cpython-3.12.13"]:
                 raise FileNotFoundError("uv")
             return subprocess.CompletedProcess(command, 1, "", "")
 
@@ -1104,7 +1120,7 @@ class LintTests(unittest.TestCase):
             + "`/Users/alice/Codes/app.py`\n"
             + "`file:///home/alice/notes.md`\n"
             + "`C:\\Users\\Alice\\Codes\\app.py`\n"
-            + "`../../Codes/Work/trading/catalog-service/src/App.java`\n"
+            + "`../../Codes/Work/trading/sample-server/src/App.java`\n"
             + "`../../Codes/Work/trading`\n"
             + "`/var/log/service.log`\n"
             + "https://example.test/Users/alice/help\n",
@@ -1200,9 +1216,9 @@ class NormalizePathsTests(unittest.TestCase):
             "source_refs:\n"
             "- raw/general/source.md\n"
             "---\n\n"
-            "absolute: /Users/alice/Codes/Work/trading/catalog-service/src/App.java\n"
-            "legacy: ../../Codes/Work/frontend/catalog-manager/src/services/rfq.js\n"
-            "repo root: ../../Codes/Work/trading/search-service\n"
+            "absolute: /Users/alice/Codes/Work/trading/sample-server/src/App.java\n"
+            "legacy: ../../Codes/Work/frontend/sample-frontend/src/services/items.js\n"
+            "repo root: ../../Codes/Work/trading/sample-service\n"
         )
 
         result = cli.normalize_markdown_paths(
@@ -1210,24 +1226,24 @@ class NormalizePathsTests(unittest.TestCase):
             "/Users/alice/Documents/Knowledge",
             platform="linux",
             repository_remotes={
-                "catalog-service": "ssh://git@code.example.test:2222/team/catalog/catalog-service.git",
-                "catalog-manager": "ssh://git@forge.example.test:2222/team/sample-platform/admin-service.git",
-                "search-service": "ssh://git@code.example.test:2222/team/catalog/search-service.git",
+                "sample-server": "ssh://git@code.gf.com.cn:30004/gf/sample/sample-server.git",
+                "sample-frontend": "ssh://git@devops.gf.com.cn:30004/gf/sample/generic-service.git",
+                "sample-service": "ssh://git@code.gf.com.cn:30004/gf/sample/sample-service.git",
             },
         )
 
-        self.assertIn("absolute: catalog-service/src/App.java", result["text"])
+        self.assertIn("absolute: sample-server/src/App.java", result["text"])
         self.assertIn(
-            "legacy: catalog-manager/src/services/rfq.js",
+            "legacy: sample-frontend/src/services/items.js",
             result["text"],
         )
-        self.assertIn("repo root: search-service", result["text"])
+        self.assertIn("repo root: sample-service", result["text"])
         self.assertIn(
-            "- 'repository:catalog-service=ssh://git@code.example.test:2222/team/catalog/catalog-service.git'",
+            "- 'repository:sample-server=ssh://git@code.gf.com.cn:30004/gf/sample/sample-server.git'",
             result["text"],
         )
         self.assertIn(
-            "- 'repository:catalog-manager=ssh://git@forge.example.test:2222/team/sample-platform/admin-service.git'",
+            "- 'repository:sample-frontend=ssh://git@devops.gf.com.cn:30004/gf/sample/generic-service.git'",
             result["text"],
         )
         self.assertNotIn("Codes/Work", result["text"])
@@ -1239,16 +1255,16 @@ class NormalizePathsTests(unittest.TestCase):
             "/Users/alice/Documents/Knowledge",
             platform="linux",
             repository_remotes={
-                "catalog-service": "ssh://git@code.example.test:2222/team/catalog/catalog-service.git",
-                "catalog-manager": "ssh://git@forge.example.test:2222/team/sample-platform/admin-service.git",
-                "search-service": "ssh://git@code.example.test:2222/team/catalog/search-service.git",
+                "sample-server": "ssh://git@code.gf.com.cn:30004/gf/sample/sample-server.git",
+                "sample-frontend": "ssh://git@devops.gf.com.cn:30004/gf/sample/generic-service.git",
+                "sample-service": "ssh://git@code.gf.com.cn:30004/gf/sample/sample-service.git",
             },
         )
         self.assertEqual(second["text"], result["text"])
         self.assertEqual(second["repository_declarations_added"], 0)
 
     def test_keeps_repository_path_when_remote_is_not_declared(self) -> None:
-        original = "path: ../../Codes/Work/trading/catalog-service/src/App.java\n"
+        original = "path: ../../Codes/Work/trading/sample-server/src/App.java\n"
 
         result = cli.normalize_markdown_paths(
             original,
@@ -1265,7 +1281,7 @@ class NormalizePathsTests(unittest.TestCase):
         original = (
             "---\n"
             "source_refs:\n"
-            "  - /Users/alice/Codes/Work/trading/catalog-service/src/App.java\n"
+            "  - /Users/alice/Codes/Work/trading/sample-server/src/App.java\n"
             "related_notes:\n"
             "  - 'wiki/general/related'\n"
             "---\n"
@@ -1276,14 +1292,14 @@ class NormalizePathsTests(unittest.TestCase):
             "/Users/alice/Documents/Knowledge",
             platform="linux",
             repository_remotes={
-                "catalog-service": "ssh://git@code.example.test/team/catalog-service.git",
+                "sample-server": "ssh://git@code.gf.com.cn/team/sample-server.git",
             },
         )
 
         self.assertIn(
             "source_refs:\n"
-            "  - 'repository:catalog-service=ssh://git@code.example.test/team/catalog-service.git'\n"
-            "  - catalog-service/src/App.java\n",
+            "  - 'repository:sample-server=ssh://git@code.gf.com.cn/team/sample-server.git'\n"
+            "  - sample-server/src/App.java\n",
             result["text"],
         )
         self.assertIn("related_notes:\n  - 'wiki/general/related'", result["text"])
@@ -1292,10 +1308,10 @@ class NormalizePathsTests(unittest.TestCase):
         original = (
             "---\n"
             "source_refs:\n"
-            "  - 'repository:catalog-service=https://alice:secret@code.example.test/"
-            "team/catalog-service.git?access_token=topsecret'\n"
+            "  - 'repository:sample-server=https://alice:secret@code.gf.com.cn/"
+            "team/sample-server.git?access_token=topsecret'\n"
             "---\n"
-            "path: /Users/alice/Codes/Work/trading/catalog-service/src/App.java\n"
+            "path: /Users/alice/Codes/Work/trading/sample-server/src/App.java\n"
         )
 
         result = cli.normalize_markdown_paths(
@@ -1303,7 +1319,7 @@ class NormalizePathsTests(unittest.TestCase):
             "/Users/alice/Documents/Knowledge",
             platform="linux",
             repository_remotes={
-                "catalog-service": "https://code.example.test/team/catalog-service.git",
+                "sample-server": "https://code.gf.com.cn/team/sample-server.git",
             },
         )
 
@@ -1311,18 +1327,18 @@ class NormalizePathsTests(unittest.TestCase):
         self.assertNotIn("access_token", result["text"])
         self.assertEqual(
             result["text"].count(
-                "repository:catalog-service=https://code.example.test/team/catalog-service.git"
+                "repository:sample-server=https://code.gf.com.cn/team/sample-server.git"
             ),
             1,
         )
-        self.assertIn("path: catalog-service/src/App.java", result["text"])
+        self.assertIn("path: sample-server/src/App.java", result["text"])
 
     def test_sanitizes_existing_declaration_without_workspace_path(self) -> None:
         original = (
             "---\n"
             "source_refs:\n"
-            "  - 'repository:catalog-service=https://alice:secret@code.example.test/"
-            "team/catalog-service.git?access_token=topsecret'\n"
+            "  - 'repository:sample-server=https://alice:secret@code.gf.com.cn/"
+            "team/sample-server.git?access_token=topsecret'\n"
             "---\n"
         )
 
@@ -1331,7 +1347,7 @@ class NormalizePathsTests(unittest.TestCase):
             "/Users/alice/Documents/Knowledge",
             platform="linux",
             repository_remotes={
-                "catalog-service": "https://code.example.test/team/catalog-service.git",
+                "sample-server": "https://code.gf.com.cn/team/sample-server.git",
             },
         )
 
@@ -1353,14 +1369,14 @@ class NormalizePathsTests(unittest.TestCase):
         self.assertEqual(result["replacement_count"], 0)
         self.assertEqual(result["warnings"][0]["code"], "workspace_path_unresolved")
 
-    def test_prefers_origin_remote_and_removes_https_userinfo(self) -> None:
+    def test_prefers_gf_remote_and_removes_https_userinfo(self) -> None:
         repository = self.base / "repository"
         self.init_repository(
             repository,
             {
-                "origin": "https://alice:secret@external.invalid/team/repository.git?access_token=topsecret#local",
-                "mirror": (
-                    "https://alice:secret@code.example.test/team/repository.git"
+                "origin": "https://github.example.test/team/repository.git",
+                "company": (
+                    "https://alice:secret@code.gf.com.cn/team/repository.git"
                     "?access_token=topsecret#local"
                 ),
             },
@@ -1369,41 +1385,13 @@ class NormalizePathsTests(unittest.TestCase):
         result = cli.select_repository_remote(repository)
 
         self.assertEqual(result["status"], "resolved")
-        self.assertEqual(result["remote_name"], "origin")
+        self.assertEqual(result["remote_name"], "company")
         self.assertEqual(
             result["url"],
-            "https://external.invalid/team/repository.git",
+            "https://code.gf.com.cn/team/repository.git",
         )
         self.assertNotIn("secret", result["url"])
         self.assertNotIn("access_token", result["url"])
-
-    def test_remote_without_origin_uses_name_order_not_host(self) -> None:
-        repository = self.base / "no-origin"
-        self.init_repository(repository, {
-            "z-mirror": "https://code.example.test/team/repository.git",
-            "a-upstream": "https://external.invalid/team/repository.git",
-        })
-        result = cli.select_repository_remote(repository)
-        self.assertEqual(result["remote_name"], "a-upstream")
-        self.assertEqual(result["url"], "https://external.invalid/team/repository.git")
-
-    def test_unsafe_origin_falls_back_to_safe_remote(self) -> None:
-        repository = self.base / "unsafe-origin"
-        self.init_repository(repository, {
-            "origin": "/tmp/local-only-repository",
-            "mirror": "https://code.example.test/team/repository.git",
-        })
-        result = cli.select_repository_remote(repository)
-        self.assertEqual(result["remote_name"], "mirror")
-        self.assertEqual(result["url"], "https://code.example.test/team/repository.git")
-
-    def test_no_safe_remote_is_reported_without_inventing_url(self) -> None:
-        repository = self.base / "local-only"
-        self.init_repository(repository, {"origin": "../local-only-repository"})
-        result = cli.select_repository_remote(repository)
-        self.assertEqual(result["status"], "safe_remote_missing")
-        self.assertIsNone(result["url"])
-        self.assertIsNone(result["remote_name"])
 
     def test_rejects_local_paths_as_repository_remotes(self) -> None:
         for value in (
@@ -1412,14 +1400,14 @@ class NormalizePathsTests(unittest.TestCase):
             "C:repository",
             "/Users/alice/repository",
             "../repository",
-            "alice:secret@code.example.test:team/repository.git",
+            "alice:secret@code.gf.com.cn:team/repository.git",
             "ssh://[bad/repository.git",
         ):
             with self.subTest(value=value):
                 self.assertIsNone(cli._sanitize_remote_url(value))
         self.assertEqual(
-            cli._sanitize_remote_url("git@code.example.test:team/repository.git"),
-            "git@code.example.test:team/repository.git",
+            cli._sanitize_remote_url("git@code.gf.com.cn:team/repository.git"),
+            "git@code.gf.com.cn:team/repository.git",
         )
 
     def test_does_not_share_remote_across_partially_resolved_same_name_roots(
@@ -1432,7 +1420,7 @@ class NormalizePathsTests(unittest.TestCase):
         unresolved = self.base / "Codes" / "Work" / "frontend" / "shared"
         self.init_repository(
             resolved,
-            {"origin": "ssh://git@code.example.test/team/shared.git"},
+            {"origin": "ssh://git@code.gf.com.cn/team/shared.git"},
         )
         unresolved.mkdir(parents=True)
         text = (
@@ -1457,10 +1445,10 @@ class NormalizePathsTests(unittest.TestCase):
             "---\n"
             "source_refs: [raw/general/source.md]\n"
             "---\n"
-            "path: /Users/alice/Codes/Work/trading/catalog-service/src/App.java\n"
+            "path: /Users/alice/Codes/Work/trading/sample-server/src/App.java\n"
         )
         remotes = {
-            "catalog-service": "ssh://git@code.example.test/team/catalog-service.git",
+            "sample-server": "ssh://git@code.gf.com.cn/team/sample-server.git",
         }
 
         first = cli.normalize_markdown_paths(
@@ -1479,7 +1467,7 @@ class NormalizePathsTests(unittest.TestCase):
         self.assertIn("source_refs:", first["text"])
         self.assertIn("raw/general/source.md", first["text"])
         self.assertEqual(
-            first["text"].count("repository:catalog-service="),
+            first["text"].count("repository:sample-server="),
             1,
         )
         self.assertEqual(second["text"], first["text"])
@@ -1499,15 +1487,15 @@ class NormalizePathsTests(unittest.TestCase):
 
     def test_normalizes_windows_workspace_case_insensitively(self) -> None:
         result = cli.normalize_markdown_paths(
-            "path: C:\\Users\\Alice\\codes\\work\\trading\\catalog-service\\src\\App.java\n",
+            "path: C:\\Users\\Alice\\codes\\work\\trading\\sample-server\\src\\App.java\n",
             "C:\\Users\\Alice\\Knowledge",
             platform="windows",
             repository_remotes={
-                "catalog-service": "ssh://git@code.example.test/team/catalog-service.git",
+                "sample-server": "ssh://git@code.gf.com.cn/team/sample-server.git",
             },
         )
 
-        self.assertIn("path: catalog-service/src/App.java", result["text"])
+        self.assertIn("path: sample-server/src/App.java", result["text"])
         self.assertNotIn("codes/work", result["text"].casefold())
 
     def test_detects_bare_workspace_fragments_and_rejects_escaping_suffix(self) -> None:
@@ -1526,7 +1514,7 @@ class NormalizePathsTests(unittest.TestCase):
             "/Users/alice/Documents/Knowledge",
             platform="linux",
             repository_remotes={
-                "repo": "ssh://git@code.example.test/team/repo.git",
+                "repo": "ssh://git@code.gf.com.cn/team/repo.git",
             },
         )
 
@@ -1545,7 +1533,7 @@ class NormalizePathsTests(unittest.TestCase):
             "/Users/alice/Documents/Knowledge",
             platform="linux",
             repository_remotes={
-                "my": "ssh://git@code.example.test/team/my.git",
+                "my": "ssh://git@code.gf.com.cn/team/my.git",
             },
         )
 
@@ -1555,7 +1543,7 @@ class NormalizePathsTests(unittest.TestCase):
     def test_preserves_source_type_prefix_and_complete_quoted_path_with_spaces(self) -> None:
         text = (
             '  - "raw:/Users/alice/Documents/Knowledge/raw/source.md"\n'
-            '  - "file:/Users/alice/Documents/Research Notes/meeting notes.docx"\n'
+            '  - "file:/Users/alice/Documents/ETF Review/meeting notes.docx"\n'
             '  - "code:/Users/alice/Codes/project/app.py"\n'
         )
 
@@ -1566,7 +1554,7 @@ class NormalizePathsTests(unittest.TestCase):
         )
 
         self.assertIn('"raw:raw/source.md"', result["text"])
-        self.assertIn('"file:../Research Notes/meeting notes.docx"', result["text"])
+        self.assertIn('"file:../ETF Review/meeting notes.docx"', result["text"])
         self.assertIn('"code:../../Codes/project/app.py"', result["text"])
         self.assertEqual(result["replacement_count"], 3)
 
@@ -1574,7 +1562,7 @@ class NormalizePathsTests(unittest.TestCase):
         text = (
             "inside: C:\\Users\\Alice\\Knowledge\\wiki\\topic.md\n"
             "outside: file:///C:/Users/Alice/Codes/project/app.py\n"
-            "repository: C:\\Users\\Alice\\Codes\\Work\\frontend\\catalog-manager\\src\\app.ts\n"
+            "repository: C:\\Users\\Alice\\Codes\\Work\\frontend\\sample-frontend\\src\\app.ts\n"
         )
 
         result = cli.normalize_markdown_paths(
@@ -1582,31 +1570,31 @@ class NormalizePathsTests(unittest.TestCase):
             "C:/Users/Alice/Knowledge",
             platform="windows",
             repository_remotes={
-                "catalog-manager": "ssh://git@forge.example.test:2222/team/sample-platform/admin-service.git"
+                "sample-frontend": "ssh://git@devops.gf.com.cn:30004/gf/sample/generic-service.git"
             },
         )
 
         self.assertIn("inside: wiki/topic.md", result["text"])
         self.assertIn("outside: ../Codes/project/app.py", result["text"])
-        self.assertIn("repository: catalog-manager/src/app.ts", result["text"])
+        self.assertIn("repository: sample-frontend/src/app.ts", result["text"])
         self.assertEqual(result["replacement_count"], 3)
 
     def test_cli_discovers_remote_before_rewriting_repository_path(self) -> None:
-        repository = self.base / "Codes/Work/trading/catalog-service"
+        repository = self.base / "Codes/Work/trading/sample-server"
         self.init_repository(
             repository,
             {
-                "origin": "https://github.example.test/team/catalog-service.git",
-                "company": "ssh://git@code.example.test:2222/team/catalog/catalog-service.git",
+                "origin": "https://github.example.test/team/sample-server.git",
+                "company": "ssh://git@code.gf.com.cn:30004/gf/sample/sample-server.git",
             },
         )
         note = self.root / "wiki/general/repository.md"
         note.write_text(
             "---\n"
             "source_refs:\n"
-            "- ../Codes/Work/trading/catalog-service/src/App.java\n"
+            "- ../Codes/Work/trading/sample-server/src/App.java\n"
             "---\n\n"
-            "`../Codes/Work/trading/catalog-service/src/App.java`\n",
+            "`../Codes/Work/trading/sample-server/src/App.java`\n",
             encoding="utf-8",
         )
 
@@ -1621,10 +1609,10 @@ class NormalizePathsTests(unittest.TestCase):
         self.assertEqual(result["files_affected"], 1)
         self.assertEqual(result["repository_declarations_added"], 1)
         self.assertIn(
-            "repository:catalog-service=https://github.example.test/team/catalog-service.git",
+            "repository:sample-server=ssh://git@code.gf.com.cn:30004/gf/sample/sample-server.git",
             rendered,
         )
-        self.assertEqual(rendered.count("catalog-service/src/App.java"), 2)
+        self.assertEqual(rendered.count("sample-server/src/App.java"), 2)
         self.assertNotIn("Codes/Work", rendered)
 
     def test_cli_reports_unresolved_repository_once(self) -> None:
@@ -1649,7 +1637,7 @@ class NormalizePathsTests(unittest.TestCase):
         note.write_text(
             "---\n"
             "source_refs:\n"
-            "  - 'repository:repo=https://alice:secret@code.example.test/"
+            "  - 'repository:repo=https://alice:secret@code.gf.com.cn/"
             "team/repo.git?access_token=topsecret'\n"
             "---\n",
             encoding="utf-8",

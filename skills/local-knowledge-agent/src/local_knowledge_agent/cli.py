@@ -811,7 +811,7 @@ def find_python_command(
         configured = python_config.get("uv_command")
         if isinstance(configured, list) and configured:
             uv_command = [str(item) for item in configured]
-    probe = [*uv_command, "python", "find", "cpython-3.12.13", "--managed-python"]
+    probe = [*uv_command, "python", "find", "cpython-3.12.13"]
     try:
         found = runner(probe)
     except (OSError, subprocess.SubprocessError):
@@ -949,7 +949,7 @@ def probe_drawio_environment(
             "source": "https://github.com/jgraph/drawio-mcp",
             "note": (
                 "Install the drawio Skill in a scope supported by the current "
-                "Agent; check supported scopes before installing"
+                "Agent; PromptScript does not support global Skill installation"
             ),
         },
     }
@@ -1102,12 +1102,25 @@ def _sanitize_remote_url(value: str) -> str | None:
     return urlunsplit((parsed.scheme, netloc, parsed.path, "", ""))
 
 
+def _remote_host(value: str) -> str | None:
+    parsed = urlsplit(value)
+    if parsed.hostname:
+        return parsed.hostname.casefold()
+    scp_like = re.match(r"^(?:[^/@\s]+@)?([^/:\s]+):.+$", value)
+    return scp_like.group(1).casefold() if scp_like else None
+
+
+def _is_gf_remote(value: str) -> bool:
+    host = _remote_host(value)
+    return bool(host and (host == "gf.com.cn" or host.endswith(".gf.com.cn")))
+
+
 def select_repository_remote(
     repository_root: Path,
     *,
     runner: Runner = _default_runner,
 ) -> dict[str, Any]:
-    """Select a safe fetch remote: origin, then name and URL order."""
+    """Select a safe fetch remote, preferring gf.com.cn and then origin."""
 
     root = repository_root.expanduser().resolve()
     try:
@@ -1137,6 +1150,7 @@ def select_repository_remote(
     selected_name, selected_url = min(
         candidates,
         key=lambda item: (
+            0 if _is_gf_remote(item[1]) else 1,
             0 if item[0] == "origin" else 1,
             item[0],
             item[1],

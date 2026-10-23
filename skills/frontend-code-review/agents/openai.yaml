@@ -1,0 +1,7 @@
+interface:
+  display_name: "前端代码审查"
+  short_description: "按项目一致性、复用、命名和最小改动原则做代码审查"
+  default_prompt: "使用 $frontend-code-review 审查当前代码改动，先看项目一致性，再补充正确性和风险。"
+
+policy:
+  allow_implicit_invocation: true

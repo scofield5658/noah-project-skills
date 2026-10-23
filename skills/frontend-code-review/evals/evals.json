@@ -1,0 +1,23 @@
+{
+  "skill_name": "frontend-code-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请审查这次代码改动",
+      "expected_output": "按固定审查结构输出，优先看项目一致性、复用、命名和改动范围是否克制。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "帮我看一下这个 React 组件改动有没有问题",
+      "expected_output": "按前端改动审查，重点看函数行为、组件使用习惯、props 注入、callback 契约和是否有多余层级。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "请审查这个 API 和数据库字段改动",
+      "expected_output": "按后端改动审查，重点看单测覆盖、数据库字段必要性和影响面，以及 API 字段是否冗余。",
+      "files": []
+    }
+  ]
+}

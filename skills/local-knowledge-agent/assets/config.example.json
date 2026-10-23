@@ -4,8 +4,8 @@
   "domains": [
     {
       "id": "product-platform",
-      "label": "Product Platform",
-      "description": "Knowledge owned by the Product Platform system family.",
+      "label": "产品平台",
+      "description": "归属于产品平台系统族的知识。",
       "aliases": [
         "product-system"
       ],
@@ -13,22 +13,22 @@
         "/work/product-platform/"
       ],
       "include_when": [
-        "The Product Platform owns the behavior, data, or decision."
+        "相关行为、数据或决策由产品平台负责。"
       ],
       "exclude_when": [
-        "The topic is reusable engineering guidance without one product owner."
+        "主题是可复用的工程指导，不归属于某个具体产品。"
       ]
     },
     {
       "id": "general",
-      "label": "General",
-      "description": "Reusable knowledge without one configured product owner.",
+      "label": "通用知识",
+      "description": "不归属于某个已配置产品的可复用知识。",
       "aliases": [
         "other"
       ],
       "workspace_contains": [],
       "include_when": [
-        "The knowledge is demonstrably product-neutral."
+        "有依据确认该知识不依赖具体产品。"
       ],
       "exclude_when": []
     }

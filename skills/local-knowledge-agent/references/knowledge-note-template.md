@@ -1,12 +1,12 @@
-# Knowledge Note Templates
+# 知识笔记模板
 
-Read the relevant template before creating or materially rewriting a note. Replace angle-bracket fields with factual values and remove unused guidance.
+新建或实质性改写笔记前，阅读对应模板。将尖括号占位项替换为事实值，删除未使用的指引。字段名、状态值和目录标识保持原样；正文与标题使用用户语言。
 
-## Raw Source
+## 原始来源
 
 ```markdown
 ---
-title: <topic>
+title: <主题>
 kb_stage: raw
 bucket: <domain-id>
 source_refs:
@@ -17,40 +17,40 @@ status: captured
 path_base: knowledge_root
 ---
 
-# <Topic>
+# <主题>
 
-## Source Identity
+## 来源信息
 
-- Source type:
-- Origin:
-- Capture status:
+- 来源类型：
+- 原始位置：
+- 采集状态：
 
-## Why It Matters
+## 资料价值
 
-- Relevance to the configured domain:
+- 与已配置领域的关联：
 
-## Capture Coverage
+## 采集范围
 
-- Captured:
-- Missing:
-- Attachments or local assets:
+- 已采集：
+- 缺失：
+- 附件或本地资源：
 
-## Candidate Compile Targets
+## 建议整理目标
 
-- Wiki page:
-- Concept page:
+- Wiki 页面：
+- 概念页面：
 ```
 
-## Compiled Wiki Page
+## 整理后的 Wiki 页面
 
 ```markdown
 ---
-title: <service-module-topic>
+title: <服务、模块与主题>
 kb_stage: wiki
 bucket: <domain-id>
 source_refs:
   - raw/<domain-id>/<source-note>.md
-  # For each external repository used below, add once:
+  # 下文使用的每个外部仓库，分别声明一次：
   # - 'repository:<repository-name>=<safe-fetch-remote-url>'
 related_notes:
   - wiki/<domain-id>/<related-note>.md
@@ -59,44 +59,44 @@ status: active
 path_base: knowledge_root
 ---
 
-# <Title>
+# <服务、模块与主题>
 
-## Summary
+## 摘要
 
-<Stable conclusion in one short paragraph.>
+<用一个简短段落写明稳定结论。>
 
-## Scope
+## 范围
 
-- In scope:
-- Out of scope:
+- 包含：
+- 不包含：
 
-## Main Body
+## 正文
 
-Use the structure the topic requires: stages, rules, comparison, design decision, incident findings, or implementation panorama.
+按主题需要组织为阶段、规则、对比、设计决策、问题调查结果或实现全貌。
 
-For a complex maintainable diagram, save `assets/<note-stem>-<diagram-name>.drawio` beside this Wiki area and embed it as `![[assets/<note-stem>-<diagram-name>.drawio]]`. Keep simple or existing Mermaid fenced blocks as Mermaid.
+需要长期维护的复杂图表，保存为本 Wiki 区域附近的 `assets/<note-stem>-<diagram-name>.drawio`，并以 `![[assets/<note-stem>-<diagram-name>.drawio]]` 嵌入。简单或已有的 Mermaid 代码块保持原样。
 
-## Sources and Evidence Gaps
+## 来源与证据缺口
 
-- Confirmed sources:
-- Repository code references use `<repository-name>/<repository-relative-path>` only after the matching `source_refs` declaration.
-- Missing evidence:
+- 已确认来源：
+- 仓库代码引用先在 `source_refs` 完成对应声明，再使用 `<repository-name>/<repository-relative-path>`。
+- 缺失证据：
 
-## Related Notes
+## 相关笔记
 
 - [[wiki/<domain-id>/<related-note>]]
 
-## Caveats and Follow-up
+## 注意事项与后续跟进
 
-- Known uncertainty:
-- Next review trigger:
+- 已知不确定性：
+- 下次复核的触发条件：
 ```
 
-## Cross-Domain Concept
+## 跨领域概念
 
 ```markdown
 ---
-title: <concept>
+title: <概念>
 kb_stage: wiki
 bucket: concepts
 source_refs:
@@ -110,26 +110,26 @@ status: active
 path_base: knowledge_root
 ---
 
-# <Concept>
+# <概念>
 
-## Definition
+## 定义
 
-## Domain-Specific Variations
+## 各领域的差异
 
-| Domain | Meaning or behavior | Source |
+| 领域 | 含义或行为 | 来源 |
 | --- | --- | --- |
 |  |  |  |
 
-## Shared Rules
+## 共通规则
 
-## Open Differences
+## 待确认差异
 ```
 
-## Stable Q&A Archive
+## 稳定问答归档
 
 ```markdown
 ---
-title: <archive-topic>
+title: <归档主题>
 kb_stage: wiki
 bucket: archives
 source_refs:
@@ -141,22 +141,22 @@ status: archived
 path_base: knowledge_root
 ---
 
-# <Archive Topic>
+# <归档主题>
 
-## Why This Is Reusable
+## 可复用的原因
 
-## Sources
+## 来源
 
-## Archived Conclusion
+## 归档结论
 
-## Reuse Guidance
+## 复用指引
 ```
 
-## Approved Execution Plan
+## 已确认的执行计划
 
 ```markdown
 ---
-title: <execution-plan-topic>
+title: <执行计划主题>
 kb_stage: plan
 bucket: <domain-id>
 source_refs:
@@ -168,26 +168,26 @@ status: approved
 path_base: knowledge_root
 ---
 
-# <Execution Plan>
+# <执行计划主题>
 
-## Goal
+## 目标
 
-## Scope
+## 范围
 
-## Preconditions and Dependencies
+## 前置条件与依赖
 
-## Execution Steps
+## 执行步骤
 
-## Validation and Regression
+## 验证与回归
 
-## Risks and Follow-up
+## 风险与后续跟进
 ```
 
-## Health Check
+## 巡检报告
 
 ```markdown
 ---
-title: <scope-health-check>
+title: <范围与巡检主题>
 kb_stage: health-check
 bucket: vault
 source_refs: []
@@ -197,15 +197,15 @@ last_reviewed: <YYYY-MM-DD>
 status: baseline
 ---
 
-# <Scope> Health Check
+# <范围与巡检主题>
 
-## Summary
+## 摘要
 
-## Findings
+## 发现
 
-| Category | Affected Pages | Impact | Suggested Repair | Suggested Evidence |
+| 类别 | 受影响页面 | 影响 | 建议修复方式 | 建议补充的证据 |
 | --- | --- | --- | --- | --- |
 |  |  |  |  |  |
 
-## Recommended Next Actions
+## 后续行动建议
 ```
