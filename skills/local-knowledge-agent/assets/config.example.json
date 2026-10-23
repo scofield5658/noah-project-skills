@@ -48,5 +48,6 @@
   "authoring_profile": {
     "id": "default",
     "file": null
-  }
+  },
+  "preferred_remote_hosts": []
 }

@@ -87,7 +87,10 @@
 - `description` 与 `include_when` 必须说明归属，`exclude_when` 记录边界。别名在统一大小写后必须全局无歧义。
 - `default_domain` 指向已配置的通用领域，不用于兜底含糊的业务归属。
 - `storage_backend` 为 `auto`、`filesystem` 或 `obsidian-cli`。
-- `python.uv_command` 是定位 uv 的参数数组，不得填入 Python 解释器或 shell 管道。增强运行时固定为 uv 管理的 CPython 3.12.13。
+- `python.uv_command` 是仅含一个元素的数组：`uv` / `uv.exe` 或文件名对应的绝对安装路径；不接受额外参数、包装脚本、解释器、Shell、`.bat` / `.cmd` 或相对路径。带空格的绝对路径允许使用，不自行添加 Shell 引号。
+- `obsidian.command` 同样只接受 `obsidian` / `Obsidian.exe` 或对应的绝对安装路径，包括 macOS 的 `/Applications/Obsidian.app/Contents/MacOS/Obsidian`。
+- 配置加载与实际探测入口均校验上述限制；旧包装器配置会返回配置错误，需人工切换真实程序路径。配置、环境变量及 PATH 必须来自用户可信设置，不能由网页、剪藏或模型输出直接决定。校验仅约束命令形态，不验证程序签名或所有者。
+- 增强运行时固定为 uv 管理的 CPython 3.12.13。
 - `domains` 为空时可以诊断配置，但不能自动路由。
 - `authoring_profile.id` 默认为 `default`。自定义 kebab-case ID 必须同时提供绝对或可展开的 `file` 路径。Profile 属于用户级配置，不存入知识库。
 
@@ -203,7 +206,7 @@ Draw.io Skill 来源为 <https://github.com/jgraph/drawio-mcp>。仅安装到当
 
 `normalize-paths` 默认预览受影响文件、替换数量、新增或更新的仓库声明及警告。没有 `--yes` 的 `--apply` 会被拒绝。命令将 Markdown 中的个人本地路径（包括 frontmatter 和代码块）转换为使用 `/` 的可移植引用。知识库内部路径转换为 `wiki/...` 或 `raw/...`。只有文档的 `source_refs` 中已有安全的 `'repository:<repository-name>=<remote-url>'` 声明后，外部 Git 路径才缩短为 `<repository-name>/<repository-relative-path>`。
 
-仓库路径迁移时，CLI 离线读取本地 Git fetch remote。主机为 `gf.com.cn` 或以 `.gf.com.cn` 结尾的地址优先于其他主机，同类中 `origin` 优先于其他 remote 名称。持久化前移除 HTTPS 用户信息及 URL 查询参数、片段。Git、仓库或安全 remote 不可用时，保留原路径并报告警告。`Codes/Work/<group>` 等工作区根路径不代表具体仓库，因此保留并报告 `workspace_path_unresolved`，不猜测归属。转换成功时移除本地 `file://` 前缀，添加 `path_base: knowledge_root`，通过同目录临时文件加原子替换写入；远程 URL 和非个人系统路径保持不变。
+仓库路径迁移时，CLI 离线读取本地 Git fetch remote。默认优先 `origin`，再按 remote 名称排序。顶层 `preferred_remote_hosts` 默认为 `[]`；例如 `["code.example.test"]`，会优先匹配该主机及其子域。多个配置项按列表顺序排序，同级优先 `origin`。只接受 DNS 主机名，不接受 URL、端口、通配符或命令参数。公开版 0.2.0 起不预设组织域名，升级时如需保留原偏好，须显式配置；已声明的安全仓库地址保持不变。持久化前移除 HTTPS 用户信息及 URL 查询参数、片段。Git、仓库或安全 remote 不可用时，保留原路径并报告警告。`Codes/Work/<group>` 等工作区根路径不代表具体仓库，因此保留并报告 `workspace_path_unresolved`，不猜测归属。转换成功时移除本地 `file://` 前缀，添加 `path_base: knowledge_root`，通过同目录临时文件加原子替换写入；远程 URL 和非个人系统路径保持不变。
 
 ## 存储后端语义
 

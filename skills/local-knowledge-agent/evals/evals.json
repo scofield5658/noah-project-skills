@@ -78,7 +78,7 @@
     {
       "id": 10,
       "prompt": "把 wiki 里的个人绝对路径整理成团队可共享的写法，先让我看影响范围。",
-      "expected_output": "运行 normalize-paths --stage wiki 的只读预览，报告受影响文件、替换数、仓库声明和警告；确认后才使用 --apply --yes。知识库内路径改成 wiki/... 或 raw/...。外部 Git 仓库先在 source_refs 声明 repository:<仓库名>=<安全 remote>，再改成 <仓库名>/<仓库内路径>；多 remote 优先 gf.com.cn。无法取得安全 remote 时保留原路径。",
+      "expected_output": "运行 normalize-paths --stage wiki 的只读预览，报告受影响文件、替换数、仓库声明和警告；确认后才使用 --apply --yes。知识库内路径改成 wiki/... 或 raw/...。外部 Git 仓库先在 source_refs 声明 repository:<仓库名>=<安全 remote>，再改成 <仓库名>/<仓库内路径>；多 remote 默认优先 origin，用户配置 preferred_remote_hosts 时按配置域名顺序选择。无法取得安全 remote 时保留原路径。",
       "files": [],
       "expectations": [
         "预览阶段不修改 Markdown",

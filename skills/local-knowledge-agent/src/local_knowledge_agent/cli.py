@@ -24,7 +24,7 @@ from typing import Any, Callable, Mapping, Sequence
 from urllib.parse import unquote, urlsplit, urlunsplit
 
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 REQUIRED_PYTHON = (3, 12, 13)
 CONFIG_DIR_NAME = "local-knowledge-agent"
 CONFIG_FILE_NAME = "config.json"
@@ -198,6 +198,33 @@ def _require_string_list(value: Any, field: str) -> list[str]:
     return result
 
 
+def _tool_executable(value: Any, tool: str, field: str) -> str:
+    """Accept a supported executable name or explicit absolute installation path.
+
+    This validates command shape, not binary provenance. User configuration and
+    the selected installation/PATH must still be trusted.
+    """
+    command = _require_string(value, field)
+    if command != command.strip() or any(ord(char) < 32 for char in command):
+        raise ConfigError(f"{field} contains whitespace or control characters")
+    allowed = {tool, tool + ".exe"}
+    if command.casefold() in allowed:
+        return command
+    windows_absolute = bool(re.match(r"^[A-Za-z]:[\\/]", command)) or command.startswith("\\\\")
+    if not (posixpath.isabs(command) or windows_absolute):
+        raise ConfigError(f"{field} must be {tool} or its absolute executable path")
+    if ntpath.basename(command).casefold() not in allowed:
+        raise ConfigError(f"{field} must point to {tool}; wrappers and scripts are unsupported")
+    return command
+
+
+def _uv_command(value: Any) -> list[str]:
+    command = _require_string_list(value, "python.uv_command")
+    if len(command) != 1:
+        raise ConfigError("python.uv_command must contain exactly one uv executable; no extra arguments")
+    return [_tool_executable(command[0], "uv", "python.uv_command")]
+
+
 def _normalized_name(value: str) -> str:
     return value.strip().casefold()
 
@@ -297,8 +324,8 @@ def validate_config(
     obsidian = config.get("obsidian", {})
     if not isinstance(obsidian, Mapping):
         raise ConfigError("obsidian must be an object")
-    obsidian_command = _require_string(
-        obsidian.get("command", "obsidian"), "obsidian.command"
+    obsidian_command = _tool_executable(
+        obsidian.get("command", "obsidian"), "obsidian", "obsidian.command"
     )
     obsidian_vault = obsidian.get("vault")
     if obsidian_vault is not None:
@@ -315,11 +342,7 @@ def validate_config(
             "python.command is not supported; use python.uv_command so Python "
             "remains uv-managed"
         )
-    uv_command = _require_string_list(
-        python.get("uv_command", ["uv"]), "python.uv_command"
-    )
-    if not uv_command:
-        raise ConfigError("python.uv_command must not be empty")
+    uv_command = _uv_command(python.get("uv_command", ["uv"]))
 
     authoring_profile = config.get(
         "authoring_profile", {"id": "default", "file": None}
@@ -339,6 +362,7 @@ def validate_config(
     if profile_id != "default" and profile_file is None:
         raise ConfigError("custom authoring_profile requires a file")
 
+    config["preferred_remote_hosts"] = _preferred_remote_hosts(config.get("preferred_remote_hosts", []))
     config["domains"] = normalized_domains
     config["default_domain"] = default_domain
     config["storage_backend"] = backend
@@ -806,11 +830,9 @@ def find_python_command(
             "required_version": "CPython 3.12.13",
         }
 
-    uv_command = ["uv"]
-    if isinstance(python_config, Mapping):
-        configured = python_config.get("uv_command")
-        if isinstance(configured, list) and configured:
-            uv_command = [str(item) for item in configured]
+    if not isinstance(python_config, Mapping):
+        raise ConfigError("python must be an object")
+    uv_command = _uv_command(python_config.get("uv_command", ["uv"]))
     probe = [*uv_command, "python", "find", "cpython-3.12.13"]
     try:
         found = runner(probe)
@@ -1110,18 +1132,39 @@ def _remote_host(value: str) -> str | None:
     return scp_like.group(1).casefold() if scp_like else None
 
 
-def _is_gf_remote(value: str) -> bool:
+def _preferred_remote_hosts(value: Any) -> list[str]:
+    hosts = _require_string_list(value, "preferred_remote_hosts")
+    result = []
+    for host in hosts:
+        labels = host.split(".")
+        if len(host) > 253 or any(
+            not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label)
+            for label in labels
+        ):
+            raise ConfigError("preferred_remote_hosts must contain DNS hostnames without URL, port or wildcard")
+        normalized = host.casefold()
+        if normalized not in result:
+            result.append(normalized)
+    return result
+
+
+def _remote_preference(value: str, hosts: Sequence[str]) -> int:
     host = _remote_host(value)
-    return bool(host and (host == "gf.com.cn" or host.endswith(".gf.com.cn")))
+    for index, preferred in enumerate(hosts):
+        if host and (host == preferred or host.endswith("." + preferred)):
+            return index
+    return len(hosts)
 
 
 def select_repository_remote(
     repository_root: Path,
     *,
     runner: Runner = _default_runner,
+    preferred_remote_hosts: Sequence[str] = (),
 ) -> dict[str, Any]:
-    """Select a safe fetch remote, preferring gf.com.cn and then origin."""
+    """Select a safe fetch remote by configured host order, then origin."""
 
+    hosts = _preferred_remote_hosts(list(preferred_remote_hosts))
     root = repository_root.expanduser().resolve()
     try:
         names_result = runner(["git", "-C", str(root), "remote"])
@@ -1150,7 +1193,7 @@ def select_repository_remote(
     selected_name, selected_url = min(
         candidates,
         key=lambda item: (
-            0 if _is_gf_remote(item[1]) else 1,
+            _remote_preference(item[1], hosts),
             0 if item[0] == "origin" else 1,
             item[0],
             item[1],
@@ -1591,6 +1634,7 @@ def _discover_repository_remotes(
     *,
     platform: str,
     cache: dict[Path, dict[str, Any]],
+    preferred_remote_hosts: Sequence[str] = (),
 ) -> tuple[dict[str, str], list[dict[str, str]]]:
     windows = platform.lower() in {"windows", "win32", "nt"}
     remotes: dict[str, str] = {}
@@ -1639,7 +1683,7 @@ def _discover_repository_remotes(
         for root in sorted(roots, key=str):
             result = cache.get(root)
             if result is None:
-                result = select_repository_remote(root)
+                result = select_repository_remote(root, preferred_remote_hosts=preferred_remote_hosts)
                 cache[root] = result
             if result["status"] == "resolved":
                 resolved_urls.add(str(result["url"]))
@@ -1670,9 +1714,11 @@ def normalize_paths(
     stage: str,
     platform: str,
     apply: bool,
+    preferred_remote_hosts: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Preview or atomically apply path normalization to one knowledge stage."""
 
+    hosts = _preferred_remote_hosts(list(preferred_remote_hosts))
     validated_root = validate_knowledge_root(root)["path"]
     stage_root = validated_root / stage
     affected: list[dict[str, Any]] = []
@@ -1690,6 +1736,7 @@ def normalize_paths(
             validated_root,
             platform=platform,
             cache=remote_cache,
+            preferred_remote_hosts=hosts,
         )
         result = normalize_markdown_paths(
             original,
@@ -2172,7 +2219,9 @@ def probe_obsidian(
     """Probe Obsidian and require a vault that contains the knowledge root."""
 
     obsidian = config.get("obsidian", {})
-    command = str(obsidian.get("command", "obsidian"))
+    command = _tool_executable(
+        obsidian.get("command", "obsidian"), "obsidian", "obsidian.command"
+    )
     executable = (
         executable_resolver(command) if not Path(command).is_absolute() else command
     )
@@ -2532,6 +2581,7 @@ def main(
                 stage=args.stage,
                 platform=platform,
                 apply=args.apply,
+                preferred_remote_hosts=config["preferred_remote_hosts"],
             )
             _emit(result)
             return 0
