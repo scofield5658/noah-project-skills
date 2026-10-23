@@ -670,7 +670,7 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(
             output.getvalue().strip(),
-            "local-knowledge-agent 0.2.0 (CPython 3.12.13)",
+            "local-knowledge-agent 0.2.1 (CPython 3.12.13)",
         )
 
     def test_runtime_contract_rejects_other_python_builds(self) -> None:

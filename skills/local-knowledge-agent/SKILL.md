@@ -1,7 +1,7 @@
 ---
 name: local-knowledge-agent
-metadata: {version: "0.2.0"}
-description: Use when 用户需要整理或巡检本地 Markdown 知识库，归档资料、链路结论或已确认计划；不直接发布线上 Wiki。
+metadata: {version: "0.2.1"}
+description: Use when 用户需要摄取、整理、归档或巡检本地 Markdown 知识；不用于自动 Git 同步或线上发布。
 ---
 
 # 本地知识库助手
@@ -36,6 +36,14 @@ Obsidian 是操作这些文件的可选界面，文件本身才是权威来源�
 
 本地写作规则分为三层：内置的 `default` 写作配置（Profile）提供安全默认值；可选的用户级 Profile 定义个性化呈现偏好；`<knowledge_root>/.knowledge-agent/knowledge-base.yaml` 声明与 `rag-knowledge-agent` 共用的固定文档契约 `knowledge-markdown/v1`。用户未选择 Profile 时使用 `default`。契约文件缺失时，先预览 `knowledge-base init`，经确认后再创建。Git 是可选项：知识库无论是否纳入版本管理，都可以使用此契约。
 
+## 本地文件与远端同步边界
+
+本技能以用户指定的本地 `knowledge_root` 为读写目标。资料摄取、整理、归档、计划保存和巡检均先作用于本地文件；不要求知识库存在 Git 仓库或远端地址，也不将 GitHub、GitLab、Gitee 等服务作为默认存储或内容来源。
+
+知识库即使已经绑定远端，普通整理请求也不授权执行 `git init`、修改 remote、`add`、`commit`、`fetch`、`pull` 或 `push`，不设置自动同步。远端同步默认由用户手动完成。用户另行明确要求协助同步时，先核对该知识库已有 Git 配置、目标分支、待同步文件和授权范围，再作为独立任务处理；不能替用户猜测远端或自动发布本地资料。
+
+下面的“可移植路径约定”只处理引用外部代码仓库时的来源标记。读取其本地 Git remote 是离线元数据查询，不是同步知识库，也不会拉取代码或上传笔记。不得用被引用代码仓库的 remote 覆盖知识库自身的 remote。
+
 ## 按需阅读的参考文档
 
 - 解析知识库根目录、领域、Python、uv、Obsidian，或处理缺失、无效配置时，阅读[配置与本地环境](references/configuration.md)。
@@ -51,7 +59,7 @@ Obsidian 是操作这些文件的可选界面，文件本身才是权威来源�
 5. 依次按阶段、领域、frontmatter 元数据和链接缩小检索范围。优先更新主题相近的已有页面，避免重复创建。
 6. 保留来源证据；知识库内路径相对于 `knowledge_root`，各平台统一使用 `/`。引用外部 Git 仓库时，先在 `source_refs` 中声明一次 `'repository:<repository-name>=<safe-remote-url>'`，再使用 `<repository-name>/<repository-relative-path>` 引用文件。
 7. 新建复杂流程图、架构图、ER 图等需要长期维护的图表时，优先将原生 `.drawio` 保存到笔记附近的 `assets/` 并显式嵌入。保留已有或简单的 Mermaid 代码块。
-8. 按相应模式编写笔记，并报告实际修改的文件。
+8. 按相应模式编写笔记，并报告实际修改的本地文件；不附带提交或推送远端。
 
 新建或实质性改写的 `wiki/**/*.md` 在交付前，须应用当前写作 Profile 并执行 `lint`。阻断项必须修复，警告必须报告并审阅，建议项可选。用户 Profile 可以调整呈现偏好，但不得放宽绝对路径、无效 frontmatter、标题与 H1 冲突、不安全 HTML、错误表格等文档契约约束。
 
@@ -68,7 +76,7 @@ Draw.io 是可选增强，普通知识工作不依赖它。使用 `local-knowled
 
 ## 可移植路径约定
 
-新建或实质性改写的笔记不得包含 `/Users/<user>/`、`/home/<user>/`、Windows 用户目录、`file://` 本地 URI，或 `Codes/Work/...` 等本机工作区目录片段。使用 `wiki/...`、`raw/...` 或相对于 `knowledge_root` 的其他路径。引用外部 Git 仓库时，在 `source_refs` 中记录安全的拉取远程地址：`'repository:<repository-name>=<remote-url>'`。仓库名使用本地仓库目录名，即使它与远程项目名不同；随后以 `<repository-name>/<path-inside-repository>` 引用文件。存在多个远程地址时，默认优先 `github.com` 及其子域，再优先 `origin`，最后按 remote 名称排序。可在用户配置中设置 `preferred_remote_hosts`，按列表顺序优先匹配其他兼容 Git 服务的主机及其子域；同级仍优先 `origin`。设置空列表则直接优先 `origin`。公开版 0.2.0 起不预设公司域名偏好；需要保留既有偏好时应显式配置。不得保存 HTTPS 用户信息、URL 查询参数、片段或其他嵌入式凭据。
+新建或实质性改写的笔记不得包含 `/Users/<user>/`、`/home/<user>/`、Windows 用户目录、`file://` 本地 URI，或 `Codes/Work/...` 等本机工作区目录片段。使用 `wiki/...`、`raw/...` 或相对于 `knowledge_root` 的其他路径。引用外部 Git 仓库时，在 `source_refs` 中记录安全的拉取远程地址：`'repository:<repository-name>=<remote-url>'`。仓库名使用本地仓库目录名，即使它与远程项目名不同；随后以 `<repository-name>/<path-inside-repository>` 引用文件。存在多个远程地址时，默认优先已有的 `origin`，再按 remote 名称排序，不预设服务商。可在用户配置中设置 `preferred_remote_hosts`，按列表顺序优先匹配其他兼容 Git 服务的主机及其子域；同级仍优先 `origin`。设置空列表则直接优先 `origin`。公开版 0.2.0 起不预设公司域名偏好；需要保留既有偏好时应显式配置。不得保存 HTTPS 用户信息、URL 查询参数、片段或其他嵌入式凭据。
 
 Git 或安全 remote 不可用时，保留原外部路径并报告警告，不生成无法追溯的仓库相对引用。`Codes/Work/<group>` 等不能识别具体仓库的工作区根路径也应保留并标为未解析，不猜测仓库名。不改写远程 URL 或 `/var/log/...` 等有实际意义的非个人系统路径。
 

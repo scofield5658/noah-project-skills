@@ -78,7 +78,7 @@
     {
       "id": 10,
       "prompt": "把 wiki 里的个人绝对路径整理成团队可共享的写法，先让我看影响范围。",
-      "expected_output": "运行 normalize-paths --stage wiki 的只读预览，报告受影响文件、替换数、仓库声明和警告；确认后才使用 --apply --yes。知识库内路径改成 wiki/... 或 raw/...。外部 Git 仓库先在 source_refs 声明 repository:<仓库名>=<安全 remote>，再改成 <仓库名>/<仓库内路径>；多 remote 默认优先 github.com，其次 origin；用户配置 preferred_remote_hosts 时按配置域名顺序选择。无法取得安全 remote 时保留原路径。",
+      "expected_output": "运行 normalize-paths --stage wiki 的只读预览，报告受影响文件、替换数、仓库声明和警告；确认后才使用 --apply --yes。知识库内路径改成 wiki/... 或 raw/...。外部 Git 仓库先在 source_refs 声明 repository:<仓库名>=<安全 remote>，再改成 <仓库名>/<仓库内路径>；多 remote 默认优先 origin，不预设服务商；用户配置 preferred_remote_hosts 时按配置域名顺序选择。无法取得安全 remote 时保留原路径。",
       "files": [],
       "expectations": [
         "预览阶段不修改 Markdown",
@@ -97,6 +97,11 @@
         "不批量转换已有 Mermaid",
         "正式图表引用使用 knowledge_root 相对路径"
       ]
+    },
+    {
+      "id": 12,
+      "prompt": "我的本地知识库已经绑定 Git 远端。请把这个已确认的计划归档到本地 plan，远端由我手动同步。",
+      "expected_output": "核对 knowledge_root 后写入本地 plan，报告文件与验证结果；不初始化 Git、不修改 remote、不 add/commit/fetch/pull/push，也不因存在 GitHub 等远端改变本地写入目标。"
     }
   ]
 }

@@ -206,7 +206,7 @@ Draw.io Skill 来源为 <https://github.com/jgraph/drawio-mcp>。仅安装到当
 
 `normalize-paths` 默认预览受影响文件、替换数量、新增或更新的仓库声明及警告。没有 `--yes` 的 `--apply` 会被拒绝。命令将 Markdown 中的个人本地路径（包括 frontmatter 和代码块）转换为使用 `/` 的可移植引用。知识库内部路径转换为 `wiki/...` 或 `raw/...`。只有文档的 `source_refs` 中已有安全的 `'repository:<repository-name>=<remote-url>'` 声明后，外部 Git 路径才缩短为 `<repository-name>/<repository-relative-path>`。
 
-仓库路径迁移时，CLI 离线读取本地 Git fetch remote。默认优先 GitHub，其次 `origin`，再按 remote 名称排序。顶层 `preferred_remote_hosts` 默认为 `["github.com"]`；可以配置其他兼容 Git 服务的主机，例如 `["code.example.test"]`，会优先匹配该主机及其子域。多个配置项按列表顺序排序，同级优先 `origin`；配置 `[]` 则取消主机偏好。只接受 DNS 主机名，不接受 URL、端口、通配符或命令参数。公开版 0.2.0 起不预设组织域名，升级时如需保留原偏好，须显式配置；已声明的安全仓库地址保持不变。持久化前移除 HTTPS 用户信息及 URL 查询参数、片段。Git、仓库或安全 remote 不可用时，保留原路径并报告警告。`Codes/Work/<group>` 等工作区根路径不代表具体仓库，因此保留并报告 `workspace_path_unresolved`，不猜测归属。转换成功时移除本地 `file://` 前缀，添加 `path_base: knowledge_root`，通过同目录临时文件加原子替换写入；远程 URL 和非个人系统路径保持不变。
+仓库路径迁移时，CLI 离线读取本地 Git fetch remote。仅为生成代码来源标记，默认优先已有的 `origin`，再按 remote 名称排序。顶层 `preferred_remote_hosts` 默认为 `[]`，不预设服务商；可选配置只影响来源标记选择，不是远端同步设置。可以配置兼容 Git 服务的主机，例如 `["code.example.test"]`，会优先匹配该主机及其子域。多个配置项按列表顺序排序，同级优先 `origin`；配置 `[]` 则取消主机偏好。只接受 DNS 主机名，不接受 URL、端口、通配符或命令参数。公开版 0.2.0 起不预设组织域名，升级时如需保留原偏好，须显式配置；已声明的安全仓库地址保持不变。持久化前移除 HTTPS 用户信息及 URL 查询参数、片段。Git、仓库或安全 remote 不可用时，保留原路径并报告警告。`Codes/Work/<group>` 等工作区根路径不代表具体仓库，因此保留并报告 `workspace_path_unresolved`，不猜测归属。转换成功时移除本地 `file://` 前缀，添加 `path_base: knowledge_root`，通过同目录临时文件加原子替换写入；远程 URL 和非个人系统路径保持不变。
 
 ## 存储后端语义
 
@@ -222,3 +222,7 @@ Draw.io Skill 来源为 <https://github.com/jgraph/drawio-mcp>。仅安装到当
 - 匹配工作区前将 `\` 规范化为 `/`，Windows 路径比较不区分大小写。
 - 优先使用 `%APPDATA%`，`%USERPROFILE%\.config` 仅作备用。
 - Windows 同样遵循只通过 uv 运行 Python 的规则。`python.uv_command` 配置 uv 的可执行文件名或绝对路径，不使用 `py`、`python.exe` 或手动管理的虚拟环境。
+
+## 本地知识库与 Git 同步
+
+`knowledge_root` 指向本地目录。已有 Git 远端只属于用户管理的同步配置，不改变本技能的文件系统或 Obsidian 读写后端。普通摄取、整理与归档不会提交或推送；用户手动同步时沿用其现有 remote，技能不预设 GitHub 或其他服务。路径迁移读取被引用代码仓库的 fetch remote 仅为离线生成来源声明，与知识库远端同步无关。

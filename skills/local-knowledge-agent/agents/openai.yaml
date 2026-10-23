@@ -1,6 +1,6 @@
 interface:
   display_name: "本地知识库助手"
   short_description: "将资料和分析结论整理为可配置、可追溯的本地 Markdown 知识库"
-  default_prompt: "使用 $local-knowledge-agent 将这些资料整理到我配置的本地 Markdown 知识库；本地路径相对于 knowledge_root，新建复杂图表优先使用原生 Draw.io 资源。"
+  default_prompt: "使用 $local-knowledge-agent 将这些资料整理到我配置的本地 Markdown 知识库；本地路径相对于 knowledge_root，新建复杂图表优先使用原生 Draw.io 资源。仅整理本地文件，不自动提交或同步 Git 远端。"
 policy:
   allow_implicit_invocation: true
