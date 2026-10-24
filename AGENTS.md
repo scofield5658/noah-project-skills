@@ -49,4 +49,5 @@ When using the independent synthesis path, keep factual attribution and source l
 - Do not normalize unrelated skills.
 - Do not add cross-skill dependencies unless the referenced public skill exists.
 - Describe optional follow-on capabilities by role when no public skill exists.
+- When adding, removing, or renaming a skill under `skills/`, update the README "Current scope" list so it matches the skill directories on disk; keep each entry a short capability blurb drawn from that skill's `SKILL.md`, not a detailed inventory.
 - Verify trigger boundaries, references, sensitive terms, and independent usability before handoff.
