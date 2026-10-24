@@ -1,0 +1,23 @@
+{
+  "state": {
+    "goal": "Choose a maintenance approach",
+    "confirmed_facts": [
+      {"source": "current plan A", "fact": "A has 5 minutes downtime and costs 200 units"},
+      {"source": "current plan B", "fact": "B has 30 minutes downtime and costs 50 units"}
+    ],
+    "user_preferences": {},
+    "unknowns": ["User's cost ceiling", "User's acceptable downtime window"],
+    "conversation": [{"role": "user", "content": "Help me compare A and B"}]
+  },
+  "questions": {
+    "maintenance_plan": {
+      "type": "choice",
+      "instructions": "Which approach meets the user's confirmed constraints? These options trade cost for downtime. Do not invent a preference. If the user has not provided a cost ceiling and acceptable downtime, choose UNKNOWN and leave the decision to the user.",
+      "criteria": {
+        "A": "A fits explicitly confirmed budget and downtime constraints better",
+        "B": "B fits explicitly confirmed budget and downtime constraints better",
+        "UNKNOWN": "Decisive constraints or preferences are missing, conflicting, or neither option fits"
+      }
+    }
+  }
+}

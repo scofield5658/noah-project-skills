@@ -1,0 +1,10 @@
+[
+  {"query": "根据当前会话事实，用决策模型比较候选 A/B，缺少我的偏好时请问我。", "should_trigger": true},
+  {"query": "把已定义的三类工单路由交给兼容 Decision API 辅助判定，并保留无法判断。", "should_trigger": true},
+  {"query": "诊断为什么这次外部决策返回 UNKNOWN，先整理会话上下文。", "should_trigger": true},
+  {"query": "使用 common-decision-assist 检查我的配置并调用测试环境。", "should_trigger": true},
+  {"query": "帮我润色这段文字。", "should_trigger": false},
+  {"query": "计算两个已经明确的整数之和。", "should_trigger": false},
+  {"query": "先开放式探索有哪些方案，我还没有候选或比较标准。", "should_trigger": false},
+  {"query": "查询这家机构今天发布的新闻，不做候选决策。", "should_trigger": false}
+]
