@@ -49,6 +49,7 @@
   "profile": "test",
   "model": "your-model-id",
   "needs_human": true,
+  "next_action": "ask_user",
   "answers": {
     "plan": {"type": "choice", "choice": "UNKNOWN", "confidence": 0.9,
              "probabilities": {"A": 0.06, "B": 0.04, "UNKNOWN": 0.9},
@@ -64,7 +65,7 @@ UNKNOWN、最高概率并列，或未达到可选 `--min-confidence` / `--min-ma
 
 ## 状态与退出码
 
-常规结果和错误均在 stdout 输出一个 JSON；不输出 traceback、Token、原始会话或上游错误体。`--help` 是标准 CLI 文本例外。错误结构为 `status` + `error.message`，可附缺失字段、HTTP 状态和已确定的 profile/model。
+常规结果和错误均在 stdout 输出一个 JSON；不输出 traceback、Token、原始会话或上游错误体。`--help` 是标准 CLI 文本例外。错误结构为 `status` + `error.message` + `next_action=stop`（`PROFILE_REQUIRED` 为 `select_profile`），可附缺失字段、HTTP 状态和已确定的 profile/model。
 
 | 状态 | 退出码 | 行为 |
 | --- | --- | --- |
@@ -81,7 +82,15 @@ UNKNOWN、最高概率并列，或未达到可选 `--min-confidence` / `--min-ma
 | `INTERNAL_ERROR` | 7 | 本地非预期错误，停止并报告 |
 | `CANCELLED` | 130 | 用户中断；服务端结果可能未知 |
 
-超时为底层网络 I/O 超时，不是整个任务 SLA。客户端失败不证明服务端从未处理；如要重试，由用户或上层流程重新决定。脚本不设置业务执行权限。
+## 后续处理门禁
+
+仅当退出码为 0 且 `status=DECIDED`、`next_action=evaluate_candidate` 时，才由主模型核对候选；`NEEDS_HUMAN/ask_user` 只进入人工判断。`READY/ready` 是本地配置就绪，不能视为模型结果。
+
+技术错误均为非零退出、`next_action=stop`，无可用答案时不包含 answers。调用方必须停止所有依赖判定结果的后续分支，不能捕获错误后继续解释、默认分流、反复重试或启动备用分析。LOG_ERROR 虽保留原结果，也不得自动绕过退出码继续执行；用户可另行审阅。
+
+本会话曾出现技术失败时，普通补充事实不能触发再次请求或健康探测；只在用户明确要求重试，或确认恢复并要求继续后重启一次。主任务不依赖该技能的已有工作可继续，本技能不生成冗长替代流程。
+
+`request_budget_seconds` 默认 5 秒，限制传输子进程从启动后到收到完整响应的等待，覆盖 DNS 卡顿和持续慢速返回；另有少量进程启动与清理开销，不是整个任务 SLA。`timeout_seconds` 仍约束单次 I/O。到达预算会终止并回收传输进程，父进程再处理一次脱敏日志；不会遗留后台请求继续等待。客户端超时/终止不证明服务端从未处理，不能为补日志或补结果自动重试。脚本不设置业务执行权限。
 
 ## 本地测试
 

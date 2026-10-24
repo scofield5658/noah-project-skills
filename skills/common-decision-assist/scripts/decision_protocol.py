@@ -9,6 +9,7 @@ import urllib.error
 import urllib.request
 
 from decision_config import DecisionError, MAX_BYTES, SCHEMA_VERSION, contains_credential, parse_json
+from decision_transport import call_with_budget
 
 
 BOUNDARY = (
@@ -142,7 +143,7 @@ def decide(config, payload, min_confidence=None, min_margin=None, execution=None
         if value is not None and (not _number(value) or not 0 <= value <= 1):
             raise DecisionError("INPUT_ERROR", "Decision thresholds must be finite values from 0 to 1.", 3, field=name)
     request = validate_request(payload)
-    body = _call(config, request, execution)
+    body = call_with_budget(config, request, execution)
     answers = _validate_answers(body, request["questions"])
     for answer in answers.values():
         ranked = sorted(answer["probabilities"].values(), reverse=True)

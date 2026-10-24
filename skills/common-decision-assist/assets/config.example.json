@@ -1,5 +1,6 @@
 {
   "timeout_seconds": 30,
+  "request_budget_seconds": 5,
   "profiles": {
     "test": {"url": "", "token": "", "model": ""},
     "prod": {"url": "", "token": "", "model": ""}

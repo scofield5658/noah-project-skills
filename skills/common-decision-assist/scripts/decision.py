@@ -3,7 +3,7 @@
 import sys
 
 if sys.version_info < (3, 10):
-    print('{"schema_version":"decision-assist/v1","status":"RUNTIME_ERROR","error":{"message":"Python 3.10+ is required."}}')
+    print('{"schema_version":"decision-assist/v1","status":"RUNTIME_ERROR","next_action":"stop","error":{"message":"Python 3.10+ is required."}}')
     raise SystemExit(2)
 
 import argparse
@@ -72,11 +72,13 @@ def main():
         # Unknown local failures still must not expose input, environment, or tracebacks.
         result = {"schema_version": SCHEMA_VERSION, "status": "INTERNAL_ERROR", "error": {"message": "Unexpected local failure; no fallback was attempted."}}
         code = 7
+    result["next_action"] = {"READY": "ready", "DECIDED": "evaluate_candidate", "NEEDS_HUMAN": "ask_user",
+                             "PROFILE_REQUIRED": "select_profile"}.get(result["status"], "stop")
     if config is not None and args.command == "decide" and config.profile == "test":
         try:
             append_test_record(config, result, round((time.perf_counter() - started) * 1000), execution)
         except (OSError, ValueError, TypeError):
-            result = {"schema_version": SCHEMA_VERSION, "status": "LOG_ERROR", "profile": "test",
+            result = {"schema_version": SCHEMA_VERSION, "status": "LOG_ERROR", "profile": "test", "next_action": "stop",
                       "error": {"message": "Cannot append decision.log; the original result is preserved. Do not retry the API merely to repair logging."},
                       "result": result}
             code = 8

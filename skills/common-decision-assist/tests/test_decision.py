@@ -210,6 +210,21 @@ class ConfigTests(CLIBase):
         code, result = self.invoke("doctor")
         self.assertEqual((code, result["status"], result["model"]), (0, "READY", "通用模型"))
 
+    def test_request_budget_defaults_without_modifying_existing_config(self):
+        self.configured()
+        self.config["timeout_seconds"] = 30
+        code, result = self.invoke("doctor")
+        self.assertEqual((code, result["request_budget_seconds"]), (0, 5))
+        self.assertEqual(result["timeout_seconds"], 30)
+        self.assertNotIn("request_budget_seconds", json.loads(self.default_path.read_text()))
+
+    def test_invalid_request_budget_fails_before_service_use(self):
+        self.configured()
+        for value in (0, -1, True, "NaN", 301):
+            self.config["request_budget_seconds"] = value
+            code, result = self.invoke("doctor")
+            self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+
 
 class LocalServerTests(CLIBase):
     @classmethod
@@ -242,7 +257,13 @@ class LocalServerTests(CLIBase):
                 if self.path == "/escaped-secret":
                     data = data.replace(b"fake-test-credential", b"\\u0066ake-test-credential")
                 try:
-                    self.wfile.write(data)
+                    if self.path == "/drip":
+                        for byte in data:
+                            self.wfile.write(bytes([byte]))
+                            self.wfile.flush()
+                            time.sleep(0.04)
+                    else:
+                        self.wfile.write(data)
                 except (BrokenPipeError, ConnectionResetError):
                     pass
 
@@ -351,6 +372,59 @@ class LocalServerTests(CLIBase):
         self.assertNotEqual(code, 0)
         self.assertEqual(result["status"], "TIMEOUT")
         self.assertEqual(len(self.calls), 1)
+
+    def test_unavailable_service_stops_downstream_decision_actions(self):
+        self.configured(url=self.url("/server"))
+        code, result = self.invoke("decide", payload=PAYLOAD)
+        self.assertEqual((code, result["status"], result["next_action"]), (5, "HTTP_ERROR", "stop"))
+        self.assertNotIn("answers", result)
+        self.assertNotIn("decision", result)
+        self.assertEqual(len(self.calls), 1)
+
+    def test_success_and_unknown_have_distinct_continuation_gates(self):
+        code, result = self.invoke("decide", payload=PAYLOAD)
+        self.assertEqual((code, result["next_action"]), (0, "evaluate_candidate"))
+        type(self).reply["answers"]["plan"].update(choice="UNKNOWN", confidence=0.9,
+            probabilities={"A": 0.04, "B": 0.06, "UNKNOWN": 0.9})
+        code, result = self.invoke("decide", payload=PAYLOAD)
+        self.assertEqual((code, result["next_action"]), (0, "ask_user"))
+
+    def test_slow_trickle_cannot_extend_the_overall_request_budget(self):
+        self.config["timeout_seconds"] = 0.15
+        self.config["request_budget_seconds"] = 0.4
+        self.configured(url=self.url("/drip"))
+        started = time.monotonic()
+        code, result = self.invoke("decide", payload=PAYLOAD)
+        elapsed = time.monotonic() - started
+        self.assertEqual((code, result["status"], result["next_action"]), (5, "TIMEOUT", "stop"))
+        self.assertLess(elapsed, 2)
+        self.assertEqual(len(self.calls), 1)
+        self.assertNotIn("answers", result)
+
+    def test_dns_stall_is_bounded_and_transport_worker_is_reaped(self):
+        self.config["request_budget_seconds"] = 0.4
+        custom = Path(self.temp.name) / "test_startup"
+        custom.mkdir()
+        pid_path = Path(self.temp.name) / "resolver.pid"
+        (custom / "sitecustomize.py").write_text(
+            "import os,socket,time\n"
+            "original=socket.getaddrinfo\n"
+            "def delayed(*args,**kwargs):\n"
+            f"    with open({str(pid_path)!r},'w') as f:f.write(str(os.getpid()))\n"
+            "    time.sleep(3)\n"
+            "    return original(*args,**kwargs)\n"
+            "socket.getaddrinfo=delayed\n", encoding="utf-8")
+        self.env["PYTHONPATH"] = str(custom)
+        started = time.monotonic()
+        code, result = self.invoke("decide", payload=PAYLOAD)
+        elapsed = time.monotonic() - started
+        self.assertEqual((code, result["status"], result["next_action"]), (5, "TIMEOUT", "stop"))
+        self.assertLess(elapsed, 2)
+        self.assertEqual(self.calls, [])
+        self.assertTrue(pid_path.exists())
+        if os.name != "nt":
+            with self.assertRaises(ProcessLookupError):
+                os.kill(int(pid_path.read_text()), 0)
 
     def test_invalid_json_response_has_no_raw_body(self):
         self.configured(url=self.url("/invalid-json"))

@@ -20,6 +20,7 @@
 ```json
 {
   "timeout_seconds": 30,
+  "request_budget_seconds": 5,
   "profiles": {
     "test": {"url": "https://your-test-host/v1/systemone", "token": "YOUR_LOCAL_TOKEN", "model": "your-test-model"},
     "prod": {"url": "", "token": "", "model": ""}
@@ -27,11 +28,11 @@
 }
 ```
 
-以上地址、模型和 Token 都是占位符，不能直接调用。脚本使用完整 URL，不自动追加路径；`model` 是接口接受的不透明标识，无供应商默认值。`timeout_seconds` 是网络 I/O 超时，`0 < x <= 300`，默认 30。文件为 UTF-8 JSON，拒绝重复 key、未知字段和非有限数值。
+以上地址、模型和 Token 都是占位符，不能直接调用。脚本使用完整 URL，不自动追加路径；`model` 是接口接受的不透明标识，无供应商默认值。`timeout_seconds` 是单次网络 I/O 超时，默认 30；`request_budget_seconds` 是整体请求预算，默认 5，覆盖 DNS、连接和读取。两者均要求 `0 < x <= 300`，实际 I/O 不超过预算。整体调用允许少量进程启动/清理开销，不代表整个任务 SLA。文件为 UTF-8 JSON，拒绝重复 key、未知字段和非有限数值。
 
 不在文件外层放 `model` 或 `profile`。每套配置使用自己的 URL、Token 和模型。只有一套三个字段均有值时自动使用该套；两套都完整时，脚本返回 `PROFILE_REQUIRED`，由 Agent 询问用户本次选择 test 还是 prod，再用 `--profile test` 或 `--profile prod` 执行。没有默认 PROD 优先或持久化环境切换。
 
-明确选择的环境缺失、地址无效、鉴权失败或超时都不会改用另一套。只有 URL/Token、缺少 model 的一套不算完整。`timeout_seconds` 为全局网络参数，与每套模型配置分开。
+明确选择的环境缺失、地址无效、鉴权失败或超时都不会改用另一套。只有 URL/Token、缺少 model 的一套不算完整。两个超时参数为全局网络参数，与每套模型配置分开。已有文件没有 `request_budget_seconds` 时自动取 5，不会改写原文件或凭据。
 
 地址不允许携带账号密码、查询参数或 fragment；Bearer Token 必须是单个可打印 ASCII 凭据。HTTP 只适用于用户已授权的受控网络；HTTPS 保留系统证书校验。不跟随重定向、不自动重试，不隐式使用系统代理。部署要求代理时需要明确扩展传输能力，不能擅自转发凭据。
 
@@ -40,7 +41,7 @@
 1. 在 Agent 实际执行环境中运行 `python3 <SKILL_DIR>/scripts/decision.py doctor`。
 2. 根据 `error.config_path`、`error.config_template` 和 `error.missing` 告知用户应完善的文件与字段。缺少两套配置时说明只需选择一套补齐，不要求全部填写。
 3. 由用户在本地填写 URL、模型和 Token，不要求把 Token 发入聊天。若 Agent 代为初始化，先确认目标及写入范围；已有明确授权不重复询问。已有文件先读取必要结构，保留其他配置，不整份覆盖。
-4. 完成后重新运行 `doctor`，再按原请求环境重试。自检成功不等于网络调用成功。
+4. 用户完成配置并要求继续后，重新运行 `doctor`，再按原请求环境调用。自检成功不等于网络调用成功。
 
 跨平台创建模板的命令如下。先把 `<SKILL_DIR>` 替换为安装路径；Windows 将 `python3` 换为 `python`。它只创建新文件，已存在则拒绝覆盖：
 
@@ -59,7 +60,7 @@ python3 <SKILL_DIR>/scripts/decision.py doctor
 python3 <SKILL_DIR>/scripts/decision.py decide --profile test --input <SKILL_DIR>/assets/request.example.json
 ```
 
-Python 3.10+，全部依赖为标准库，无 pip/npm 安装步骤。系统 Python 过旧时使用已有兼容解释器，不自动安装或修改系统 Python。macOS、Linux、Windows 使用相同脚本和目录约定；Windows 路径逻辑有模拟测试，仍需真实 Windows 补运行验证。
+Python 3.10+，全部依赖为标准库，无 pip/npm 安装步骤。一次 decide 只启动一个传输子进程、只发一次请求；超出整体预算会终止并回收该子进程，测试日志仍由父进程只追加一次。系统 Python 过旧时使用已有兼容解释器，不自动安装或修改系统 Python。macOS、Linux、Windows 使用相同脚本和目录约定；Windows 路径逻辑有模拟测试，仍需真实 Windows 补运行验证。
 
 ## TEST 调用日志
 

@@ -81,8 +81,8 @@ def _load_file(path):
     if not path:
         return {}
     data = read_file(path, "CONFIG_ERROR", 2)
-    if not isinstance(data, dict) or set(data) - {"timeout_seconds", "profiles"}:
-        raise DecisionError("CONFIG_ERROR", "Configuration must contain only timeout_seconds and profiles.")
+    if not isinstance(data, dict) or set(data) - {"timeout_seconds", "request_budget_seconds", "profiles"}:
+        raise DecisionError("CONFIG_ERROR", "Configuration must contain only timeout_seconds, request_budget_seconds and profiles.")
     profiles = data.get("profiles", {})
     if not isinstance(profiles, dict) or set(profiles) - {"test", "prod"}:
         raise DecisionError("CONFIG_ERROR", "Only test and prod profiles are supported.")
@@ -130,6 +130,7 @@ class RuntimeConfig:
     secrets: tuple = field(repr=False)
     config_path: str
     config_source: str
+    request_budget_seconds: float = 5.0
 
     def report(self):
         return {
@@ -138,6 +139,7 @@ class RuntimeConfig:
             "timeout_seconds": self.timeout_seconds, "environments": self.environments,
             "network_checked": False,
             "config_path": self.config_path, "config_source": self.config_source,
+            "request_budget_seconds": self.request_budget_seconds,
         }
 
 
@@ -204,5 +206,14 @@ def resolve_config(profile=None, config_path=None):
             raise ValueError("Timeout range")
     except (ValueError, TypeError, OverflowError):
         raise DecisionError("CONFIG_ERROR", "Timeout must be greater than 0 and at most 300 seconds.", profile=selected) from None
+    budget = data.get("request_budget_seconds", 5)
+    try:
+        if isinstance(budget, bool):
+            raise ValueError("Boolean budget")
+        budget = float(budget)
+        if not math.isfinite(budget) or not 0 < budget <= 300:
+            raise ValueError("Budget range")
+    except (ValueError, TypeError, OverflowError):
+        raise DecisionError("CONFIG_ERROR", "Request budget must be greater than 0 and at most 300 seconds.", profile=selected) from None
     return RuntimeConfig(selected, "argument" if profile is not None else "only_complete", url, token, model,
-                         timeout, readiness, tuple(set(secrets)), path, config_source)
+                         timeout, readiness, tuple(set(secrets)), path, config_source, budget)
