@@ -22,10 +22,10 @@ class Parser(argparse.ArgumentParser):
 
 
 def _parser():
-    parser = Parser(description="Use a configured Decision API for contextual choice questions.")
+    parser = Parser(description="Use a configured Decision API for choice, score, and noul questions.")
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("doctor", "decide"):
-        command = commands.add_parser(name, help="Local config checks only" if name == "doctor" else "Send one choice request")
+        command = commands.add_parser(name, help="Local config checks only" if name == "doctor" else "Send one decision request")
         command.add_argument("--profile", choices=("test", "prod"), help="User-selected environment; required if both are configured")
         command.add_argument("--config", help="Local JSON config; defaults to ~/.config/common-decision-assist/config.json")
         if name == "decide":
