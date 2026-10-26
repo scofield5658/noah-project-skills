@@ -69,7 +69,7 @@ rg '^name: software-complexity-design$' \
 - `frontend-technical-solution-writer`: draft and review Chinese frontend technical plans covering scope, data contracts, acceptance, and rollback.
 - `skill-creator-extra-rules`: create, modify, migrate, or review agent skills with checks for discovery and input/output contracts, runtime dependencies, credentials, behavior evidence, packaging, versioning, and authorized distribution.
 - `local-knowledge-agent`: ingest research or Web Clipper material into a local Markdown knowledge base, archive stable Q&A or approved plans, and run health checks along a fixed Clippings → raw → wiki lifecycle.
-- `common-decision-assist`: compare, classify, or route among finite candidates with assistive evidence from a configured Decision API, then continue analysis with the primary model and human judgment.
+- `common-decision-assist`: compare, classify, or route finite candidates, score an ordered rubric, or estimate whether a stated proposition holds, using a configured System One-compatible Decision API; returned probabilities are evidence, not calibrated proof.
 
 Install and discovery for `multi-agent-operate-rule` follow the same directory convention:
 

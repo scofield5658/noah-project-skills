@@ -580,6 +580,120 @@ class LocalServerTests(CLIBase):
         self.assertEqual(result["result"]["status"], "DECIDED")
         self.assertEqual(len(self.calls), 1)
 
+    def test_score_returns_weighted_rubric_without_picking_a_level(self):
+        request = {
+            "state": {"note": "The window is partly described"},
+            "questions": {"urgency": {
+                "type": "score",
+                "instructions": "Rate how complete the downtime window is.",
+                "criteria": ["Missing", "Partial", "Complete"],
+            }},
+        }
+        type(self).reply = {"model": "served-model", "answers": {"urgency": {
+            "type": "score", "score": 1.5, "confidence": 0.3,
+            "probabilities": {"0": 0.1, "1": 0.3, "2": 0.6},
+            "legend": {"0": "Missing", "1": "Partial", "2": "Complete"},
+        }}}
+        code, result = self.invoke("decide", payload=request)
+        answer = result["answers"]["urgency"]
+        self.assertEqual((code, result["status"], answer["decision"], answer["score"]), (0, "DECIDED", 1.5, 1.5))
+        self.assertNotIn("choice", answer)
+        sent = self.calls[0]["body"]["questions"]["urgency"]
+        self.assertEqual(sent["criteria"], request["questions"]["urgency"]["criteria"])
+        self.assertIn("ordered rubric", sent["instructions"])
+        code, result = self.invoke("decide", "--min-confidence", "0.5", payload=request)
+        self.assertEqual((code, result["status"], result["answers"]["urgency"]["decision"]), (0, "NEEDS_HUMAN", None))
+        self.assertEqual(result["answers"]["urgency"]["score"], 1.5)
+        type(self).reply["answers"]["urgency"]["probabilities"] = {"0": 0.5, "1": 0.5, "2": 0}
+        type(self).reply["answers"]["urgency"]["score"] = 0.5
+        code, result = self.invoke("decide", payload=request)
+        self.assertEqual((code, result["status"]), (0, "DECIDED"))
+        type(self).reply["answers"]["urgency"]["score"] = 4
+        code, result = self.invoke("decide", payload=request)
+        self.assertEqual((code, result["status"]), (6, "RESPONSE_ERROR"))
+
+    def test_score_and_undocumented_types_fail_before_network(self):
+        base = {"state": "context", "questions": {"q": {
+            "type": "score", "instructions": "Rate it.", "criteria": ["Low", "High"],
+        }}}
+        cases = []
+        for change in ({"criteria": {"A": "one"}}, {"criteria": ["Only one"]},
+                       {"criteria": ["x"] * 11}, {"criteria": ["Low", None]},
+                       {"type": "boolean"}, {"type": "box"}, {"type": "noul", "criteria": None}):
+            item = copy.deepcopy(base)
+            item["questions"]["q"].update(change)
+            if change.get("type") == "noul" and "criteria" in change and change["criteria"] is None:
+                item["questions"]["q"]["criteria"] = None
+            cases.append(item)
+        omitted = copy.deepcopy(base)
+        omitted["questions"]["q"].pop("criteria")
+        omitted["questions"]["q"]["type"] = "score"
+        cases.append(omitted)
+        for item in cases:
+            with self.subTest(item=item["questions"]["q"]):
+                self.calls.clear()
+                code, result = self.invoke("decide", raw=json.dumps(item))
+                self.assertEqual((code, result["status"]), (3, "INPUT_ERROR"))
+        self.assertEqual(self.calls, [])
+
+    def test_noul_reports_probability_without_confidence_or_calibration(self):
+        request = {"state": {"message": "The same invoice was charged twice."}, "questions": {"duplicate": {
+            "type": "noul", "instructions": "Does the message report a duplicate charge?",
+        }}}
+        type(self).reply = {"answers": {"duplicate": {"type": "noul", "noul": 0.8, "confidence": 0.99}}}
+        code, result = self.invoke("decide", "--min-confidence", "0.95", payload=request)
+        answer = result["answers"]["duplicate"]
+        self.assertEqual((code, result["status"], answer["decision"], answer["noul"]), (0, "DECIDED", 0.8, 0.8))
+        self.assertNotIn("confidence", answer)
+        self.assertNotIn("probabilities", answer)
+        self.assertNotIn("calibrated", json.dumps(result))
+        sent = self.calls[0]["body"]["questions"]["duplicate"]
+        self.assertNotIn("criteria", sent)
+        request["questions"]["duplicate"]["criteria"] = {"true": "Charged more than once", "false": "No duplicate charge"}
+        code, result = self.invoke("decide", payload=request)
+        self.assertEqual(self.calls[-1]["body"]["questions"]["duplicate"]["criteria"]["true"], "Charged more than once")
+        self.assertEqual((code, result["answers"]["duplicate"]["noul"]), (0, 0.8))
+
+    def test_noul_contract_rejections(self):
+        request = {"state": "context", "questions": {"duplicate": {
+            "type": "noul", "instructions": "Does it report a duplicate charge?",
+            "criteria": {"true": "yes", "maybe": "unsure"},
+        }}}
+        code, result = self.invoke("decide", payload=request)
+        self.assertEqual((code, result["status"]), (3, "INPUT_ERROR"))
+        self.assertIn("true and false", result["error"]["message"])
+        request["questions"]["duplicate"]["criteria"] = {"true": "yes"}
+        type(self).reply = {"answers": {"duplicate": {"type": "noul", "noul": 1.2}}}
+        code, result = self.invoke("decide", payload=request)
+        self.assertEqual((code, result["status"]), (6, "RESPONSE_ERROR"))
+        type(self).reply = {"answers": {"duplicate": {"type": "boolean", "probability": 0.8}}}
+        code, result = self.invoke("decide", payload=request)
+        self.assertEqual((code, result["status"]), (6, "RESPONSE_ERROR"))
+        self.assertEqual(len(self.calls), 2)
+
+    def test_mixed_questions_keep_score_and_noul_when_choice_needs_human(self):
+        request = copy.deepcopy(PAYLOAD)
+        request["questions"]["urgency"] = {
+            "type": "score", "instructions": "Rate downtime urgency.",
+            "criteria": ["Can wait", "Needs a window"],
+        }
+        request["questions"]["duplicate"] = {
+            "type": "noul", "instructions": "Is the cost ceiling already known?",
+        }
+        type(self).reply = {"answers": {
+            "plan": {"type": "choice", "choice": "UNKNOWN", "confidence": 0.9,
+                     "probabilities": {"A": 0.04, "B": 0.06, "UNKNOWN": 0.9}},
+            "urgency": {"type": "score", "score": 1, "confidence": 0.4,
+                        "probabilities": {"0": 0.2, "1": 0.8},
+                        "legend": {"0": "Can wait", "1": "Needs a window"}},
+            "duplicate": {"type": "noul", "noul": 0.1},
+        }}
+        code, result = self.invoke("decide", payload=request)
+        self.assertEqual((code, result["status"]), (0, "NEEDS_HUMAN"))
+        self.assertEqual(result["answers"]["plan"]["decision"], "UNKNOWN")
+        self.assertEqual(result["answers"]["urgency"]["decision"], 1)
+        self.assertEqual(result["answers"]["duplicate"]["noul"], 0.1)
+
 
 if __name__ == "__main__":
     unittest.main()

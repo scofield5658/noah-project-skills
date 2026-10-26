@@ -5,6 +5,9 @@
   {"query": "使用 common-decision-assist 检查我的配置并调用测试环境。", "should_trigger": true},
   {"query": "帮我润色这段文字。", "should_trigger": false},
   {"query": "计算两个已经明确的整数之和。", "should_trigger": false},
+  {"query": "用从低到高的量规给这段停机说明的完整度打分。", "should_trigger": true},
+  {"query": "估计“用户已经给出费用上限”这个命题为真的概率，不要把它当成事实。", "should_trigger": true},
   {"query": "先开放式探索有哪些方案，我还没有候选或比较标准。", "should_trigger": false},
+  {"query": "把图片里的区域框出来，并抽取发票号码。", "should_trigger": false},
   {"query": "查询这家机构今天发布的新闻，不做候选决策。", "should_trigger": false}
 ]

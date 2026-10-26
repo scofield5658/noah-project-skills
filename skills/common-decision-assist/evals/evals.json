@@ -65,7 +65,7 @@
     {
       "id": 7,
       "prompt": "我的兼容决策接口是 https://service.example/decision，结尾不是 /v1/systemone。可以使用吗？",
-      "expected_output": "路径使用配置中的完整 URL，不校验或拼接 /v1/systemone 后缀；另说明请求与响应仍需要满足 state/questions 和 choice 契约。",
+      "expected_output": "路径使用配置中的完整 URL，不校验或拼接 /v1/systemone 后缀；另说明请求与响应仍需要满足 state/questions，以及 choice、score 或 noul 契约。",
       "files": [],
       "expectations": [
         "区分 URL 路径自由与协议兼容",
@@ -100,6 +100,36 @@
       "expectations": [
         "不自动改写个人配置",
         "不把单次I/O超时说成整体请求期限"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "停机窗口只说了“本周某个时候”。请用从低到高的三档量规评估这个窗口写得有多完整，不要把它当成百分比。",
+      "expected_output": "使用 type=score，criteria 为 2-10 条从低到高的说明。保留加权 score、各档 probabilities、confidence 和 legend。说明分数可以是小数，不是百分制，也不是最可能档位的编号；不声称已校准。",
+      "files": [],
+      "expectations": [
+        "score 的 criteria 是有序数组而不是选项对象",
+        "不把加权分说成正确率或百分比"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "背景是同一张发票被扣了两次。请估计“用户已经说明这是重复扣款”为真的概率，并告诉我这是不是校准后的概率。",
+      "expected_output": "使用 HTTP type=noul，而不是 boolean。把返回的 noul 说明为服务报告的 P(true)，范围 0 到 1，没有单独 confidence。明确这不是已校准概率，也不是布尔事实或执行授权。",
+      "files": [],
+      "expectations": [
+        "不把 boolean 当作请求 type",
+        "不把 noul 说成已校准的单标签概率"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "请用 box 标出图片里的区域，或者用 fields 把发票号码抽成文本。决策接口应该都能做。",
+      "expected_output": "拒绝 box 和抽取 fields。说明本技能只发送已文档化的 choice、score、noul，不发送图片，也不把抽取当成决策题。",
+      "files": [],
+      "expectations": [
+        "不发明未文档化的题型",
+        "抽取与框选不是本技能的决策请求"
       ]
     }
   ]

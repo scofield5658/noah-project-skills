@@ -64,6 +64,6 @@ Python 3.10+，全部依赖为标准库，无 pip/npm 安装步骤。一次 deci
 
 ## TEST 调用日志
 
-TEST 的 `decide` 向配置文件所在目录的 `decision.log` 追加一行 JSON；显式 `--config` 时日志跟随该文件目录。包含 UTC 时间、唯一请求 ID、profile、模型、结果状态、耗时、是否已尝试 API，以及答案的 choice/decision/confidence/needs_human；HTTP 错误可带状态码。输入校验失败也记录，但 `api_call_attempted=false`，不能当成真实服务调用。
+TEST 的 `decide` 向配置文件所在目录的 `decision.log` 追加一行 JSON；显式 `--config` 时日志跟随该文件目录。包含 UTC 时间、唯一请求 ID、profile、模型、结果状态、耗时、是否已尝试 API，以及答案里已有的 type/choice/score/noul/decision/confidence/needs_human；不记录 probabilities 或 legend。HTTP 错误可带状态码。输入校验失败也记录，但 `api_call_attempted=false`，不能当成真实服务调用。
 
 不记录完整 state、Token、URL、题目正文或上游原始错误体。PROD 与 `doctor` 不写此日志。macOS/Linux 文件权限为 0600，Windows 继承所在私有目录 ACL。日志只追加，不做自动轮换或删除；用户可按本地数据保留要求管理。日志写入失败返回 `LOG_ERROR`（退出码 8），`result` 中保留原调用结果，不应为补日志重复请求 API。脚本拒绝将日志写入符号链接或非普通文件。

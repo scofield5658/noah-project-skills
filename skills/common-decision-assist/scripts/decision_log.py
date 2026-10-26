@@ -19,8 +19,9 @@ def append_test_record(config, result, elapsed_ms, execution):
     if "http_status" in result.get("error", {}):
         record["http_status"] = result["error"]["http_status"]
     if "answers" in result:
+        logged = ("type", "choice", "score", "noul", "decision", "confidence", "needs_human")
         record["answers"] = {
-            qid: {key: answer[key] for key in ("choice", "decision", "confidence", "needs_human")}
+            qid: {key: answer[key] for key in logged if key in answer}
             for qid, answer in result["answers"].items()
         }
     encoded = (json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
