@@ -1,0 +1,36 @@
+{
+  "state": {
+    "ticket": {
+      "body": "The customer reports two identical charges and cannot complete checkout."
+    },
+    "source": "fictional support ticket"
+  },
+  "questions": {
+    "q1": {
+      "type": "choice",
+      "instructions": "Route the ticket by the reported primary issue.",
+      "criteria": {
+        "BILLING": "Duplicate or incorrect charges",
+        "ACCESS": "Sign-in problems",
+        "UNKNOWN": "Unclear or outside these categories"
+      }
+    },
+    "q2": {
+      "type": "score",
+      "instructions": "Rate the reported impact on checkout.",
+      "criteria": [
+        "No checkout impact reported",
+        "Checkout impaired but can continue",
+        "Customer reports being unable to complete checkout"
+      ]
+    },
+    "q3": {
+      "type": "predicate",
+      "instructions": "Does the customer report a duplicate charge?",
+      "thresholds": {
+        "false_at_most": 0.2,
+        "true_at_least": 0.8
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
 interface:
   display_name: "通用决策辅助"
   short_description: "辅助有限候选比较、有序量规评分，或估计命题为真的概率；不足时交由用户判断"
-  default_prompt: "使用 $common-decision-assist 根据当前会话做候选比较、有序评分或命题概率估计，并分开说明未知项。"
+  default_prompt: "使用 $common-decision-assist 先确认配置协议及实际能力、收集当前场景必要信息，再根据当前会话做候选比较、有序评分或命题概率估计，并分开说明未知项。"

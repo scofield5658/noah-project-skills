@@ -1,4 +1,4 @@
-"""Validated System One choice, score, and noul requests; transport never changes environment."""
+"""Validate protocol-specific judgments; preserve one-shot transport and review gates."""
 
 import json
 import http.client
@@ -29,15 +29,16 @@ def _number(value):
         return False
 
 
-def validate_request(payload):
+def validate_request(payload, protocol="systemone"):
     if not isinstance(payload, dict) or set(payload) != {"state", "questions"}:
         raise DecisionError("INPUT_ERROR", "Request must contain exactly state and questions.", 3)
     state = payload["state"]
     if not isinstance(state, (str, dict, list)) or not state or (isinstance(state, str) and not state.strip()):
         raise DecisionError("INPUT_ERROR", "State must be nonempty text, an object or an array.", 3)
     questions = payload["questions"]
-    if not isinstance(questions, dict) or not 1 <= len(questions) <= 64:
-        raise DecisionError("INPUT_ERROR", "Provide between 1 and 64 questions.", 3)
+    limit = 400 if protocol == "openai" else 64
+    if not isinstance(questions, dict) or not 1 <= len(questions) <= limit:
+        raise DecisionError("INPUT_ERROR", f"Provide between 1 and {limit} questions.", 3)
     prepared = {}
     for qid, question in questions.items():
         if not isinstance(qid, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", qid):
@@ -45,17 +46,18 @@ def validate_request(payload):
         if not isinstance(question, dict):
             raise DecisionError("INPUT_ERROR", "Each question must be an object.", 3)
         if question.get("type") == "boolean":
-            raise DecisionError("INPUT_ERROR", "The documented HTTP type for a yes/no probability is noul, not boolean.", 3)
-        if question.get("type") not in ("choice", "score", "noul"):
-            raise DecisionError("INPUT_ERROR", "Only the documented choice, score, and noul question contracts are supported.", 3)
-        if set(question) - {"type", "instructions", "criteria"}:
-            raise DecisionError("INPUT_ERROR", "Questions accept only type, instructions, and criteria.", 3)
+            raise DecisionError("INPUT_ERROR", "Boolean is not a question type; use the probability type reported by capabilities.", 3)
+        probability_type = "predicate" if protocol == "openai" else "noul"
+        if question.get("type") not in ("choice", "score", probability_type):
+            raise DecisionError("INPUT_ERROR", f"Protocol {protocol} supports only choice, score, and {probability_type}.", 3)
+        if set(question) - {"type", "instructions", "criteria", "thresholds"}:
+            raise DecisionError("INPUT_ERROR", "Questions accept only type, instructions, criteria, and probability thresholds.", 3)
         if question["type"] in ("choice", "score") and set(question) != {"type", "instructions", "criteria"}:
             raise DecisionError("INPUT_ERROR", "Choice and score questions need type, instructions, and criteria.", 3)
         instructions = question.get("instructions")
         if not isinstance(instructions, str) or not instructions.strip():
             raise DecisionError("INPUT_ERROR", "Question instructions must be nonempty text.", 3)
-        note = {"choice": CHOICE_BOUNDARY, "score": SCORE_BOUNDARY, "noul": NOUL_BOUNDARY}[question["type"]]
+        note = {"choice": CHOICE_BOUNDARY, "score": SCORE_BOUNDARY, "noul": NOUL_BOUNDARY, "predicate": NOUL_BOUNDARY}[question["type"]]
         prepared_question = {**question, "instructions": BOUNDARY + note + instructions}
         if question["type"] == "choice":
             _validate_choice_criteria(question.get("criteria"))
@@ -63,7 +65,15 @@ def validate_request(payload):
             _validate_score_criteria(question.get("criteria"))
         else:
             if "criteria" in question:
+                if probability_type == "predicate":
+                    raise DecisionError("INPUT_ERROR", "Predicate uses instructions, not criteria.", 3)
                 _validate_noul_criteria(question["criteria"])
+            if "thresholds" in question:
+                bounds = question["thresholds"]
+                if (not isinstance(bounds, dict) or set(bounds) != {"false_at_most", "true_at_least"}
+                        or any(not _number(v) for v in bounds.values())
+                        or not 0 <= bounds["false_at_most"] < bounds["true_at_least"] <= 1):
+                    raise DecisionError("INPUT_ERROR", "Probability thresholds require 0 <= false_at_most < true_at_least <= 1.", 3)
         prepared[qid] = prepared_question
     return {"state": state, "questions": prepared}
 
@@ -184,6 +194,9 @@ def _validate_score_answer(answer, question):
     legend = answer.get("legend")
     if not isinstance(legend, dict) or set(legend) != set(keys) or any(not _nonempty_text(legend[key]) for key in keys):
         raise DecisionError("RESPONSE_ERROR", "Score legend must describe every submitted rubric level.", 6)
+    weighted = sum(int(index) * probability for index, probability in probabilities.items())
+    if abs(score - weighted) > 0.001:
+        raise DecisionError("RESPONSE_ERROR", "Score disagrees with the probability-weighted rubric.", 6)
     return {"type": "score", "score": score, "confidence": _confidence(answer.get("confidence")),
             "probabilities": probabilities, "legend": {key: legend[key] for key in keys}}
 
@@ -195,18 +208,26 @@ def _validate_noul_answer(answer):
     return {"type": "noul", "noul": probability}
 
 
-def _validate_answers(body, questions):
+def _validate_answers(body, questions, protocol="systemone"):
     if not isinstance(body, dict) or not isinstance(body.get("answers"), dict) or set(body["answers"]) != set(questions):
         raise DecisionError("RESPONSE_ERROR", "Response must answer exactly the submitted question IDs.", 6)
     result = {}
     for qid, question in questions.items():
         answer = body["answers"][qid]
+        if protocol == "openai" and isinstance(answer, dict) and answer.get("type") == "refusal":
+            result[qid] = {"type": "refusal", "requested_type": question["type"]}
+            continue
         if not isinstance(answer, dict) or answer.get("type") != question["type"]:
             raise DecisionError("RESPONSE_ERROR", "Response has an invalid answer type or choice.", 6)
         if question["type"] == "choice":
             result[qid] = _validate_choice_answer(answer, question)
         elif question["type"] == "score":
             result[qid] = _validate_score_answer(answer, question)
+        elif question["type"] == "predicate":
+            probability = answer.get("probability")
+            if not _number(probability) or not 0 <= probability <= 1:
+                raise DecisionError("RESPONSE_ERROR", "Predicate probability must be a finite value from 0 to 1.", 6)
+            result[qid] = {"type": "predicate", "probability": probability}
         else:
             result[qid] = _validate_noul_answer(answer)
     return result
@@ -217,13 +238,37 @@ def decide(config, payload, min_confidence=None, min_margin=None, execution=None
     for name, value in (("min_confidence", min_confidence), ("min_margin", min_margin)):
         if value is not None and (not _number(value) or not 0 <= value <= 1):
             raise DecisionError("INPUT_ERROR", "Decision thresholds must be finite values from 0 to 1.", 3, field=name)
-    request = validate_request(payload)
-    body = call_with_budget(config, request, execution)
-    answers = _validate_answers(body, request["questions"])
-    for answer in answers.values():
-        if answer["type"] == "noul":
-            # A single reported probability has no confidence and no competing margin.
-            answer.update(decision=answer["noul"], needs_human=False, reasons=[])
+    request = validate_request(payload, config.protocol)
+    # Inspect decoded source values before an adapter can serialize them into text.
+    if contains_credential(request, config.secrets):
+        raise DecisionError("INPUT_ERROR", "Request contains a configured credential; remove it from input.", 3)
+    if config.protocol == "openai":
+        from decision_openai import build_request, normalize_response
+        wire = build_request(request)
+    else:
+        wire = {"state": request["state"], "questions": {
+            qid: {key: value for key, value in question.items() if key != "thresholds"}
+            for qid, question in request["questions"].items()}}
+    body = call_with_budget(config, wire, execution)
+    if config.protocol == "openai":
+        body = normalize_response(body, request["questions"])
+    answers = _validate_answers(body, request["questions"], config.protocol)
+    for qid, answer in answers.items():
+        if answer["type"] == "refusal":
+            answer.update(decision=None, needs_human=True, reasons=["model_refusal"])
+            continue
+        if answer["type"] in ("noul", "predicate"):
+            field = "noul" if answer["type"] == "noul" else "probability"
+            probability = answer[field]
+            bounds = request["questions"][qid].get("thresholds")
+            if bounds is None:
+                # DECIDED means a probability report is available, not a boolean verdict.
+                answer.update(decision=probability, needs_human=False, reasons=[])
+            else:
+                decision = (False if probability <= bounds["false_at_most"] else
+                            True if probability >= bounds["true_at_least"] else None)
+                answer.update(decision=decision, needs_human=decision is None,
+                              reasons=["between_probability_thresholds"] if decision is None else [])
             continue
         ranked = sorted(answer["probabilities"].values(), reverse=True)
         margin = ranked[0] - ranked[1]
@@ -244,7 +289,9 @@ def decide(config, payload, min_confidence=None, min_margin=None, execution=None
         answer.update(decision=decision, needs_human=bool(reasons), reasons=reasons, probability_margin=margin)
     human = any(a["needs_human"] for a in answers.values())
     result = {"schema_version": SCHEMA_VERSION, "status": "NEEDS_HUMAN" if human else "DECIDED",
-              "profile": config.profile, "model": config.model, "needs_human": human, "answers": answers}
+              "profile": config.profile, "model": config.model, "protocol": config.protocol, "needs_human": human, "answers": answers}
     if isinstance(body.get("model"), str):
         result["response_model"] = body["model"]
+    if config.protocol == "openai" and "usage" in body:
+        result["usage"] = body["usage"]
     return result

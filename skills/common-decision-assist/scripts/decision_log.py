@@ -13,13 +13,13 @@ def append_test_record(config, result, elapsed_ms, execution):
     path = Path(config.config_path).parent / "decision.log"
     record = {
         "time": datetime.now(timezone.utc).isoformat(), "request_id": execution["request_id"],
-        "profile": "test", "model": config.model, "status": result["status"],
+        "profile": "test", "protocol": config.protocol, "model": config.model, "status": result["status"],
         "elapsed_ms": elapsed_ms, "api_call_attempted": execution.get("api_call_attempted", False),
     }
     if "http_status" in result.get("error", {}):
         record["http_status"] = result["error"]["http_status"]
     if "answers" in result:
-        logged = ("type", "choice", "score", "noul", "decision", "confidence", "needs_human")
+        logged = ("type", "choice", "score", "noul", "probability", "requested_type", "decision", "confidence", "needs_human")
         record["answers"] = {
             qid: {key: answer[key] for key in logged if key in answer}
             for qid, answer in result["answers"].items()

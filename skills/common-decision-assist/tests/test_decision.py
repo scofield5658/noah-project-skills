@@ -48,7 +48,7 @@ class CLIBase(unittest.TestCase):
 
     def configured(self, profile="test", url=None):
         self.config.setdefault("profiles", {})[profile] = {
-            "url": url or f"https://{profile}.invalid/v1/systemone", "token": f"fake-{profile}-credential", "model": "requested-model"}
+            "protocol": "systemone", "url": url or f"https://{profile}.invalid/v1/systemone", "token": f"fake-{profile}-credential", "model": "requested-model"}
 
     def invoke(self, *args, payload=None, raw=None):
         if self.config is not None:
@@ -74,6 +74,50 @@ class CLIBase(unittest.TestCase):
 
 
 class ConfigTests(CLIBase):
+
+    def test_protocol_is_required_without_silent_legacy_default(self):
+        self.configured()
+        self.config["profiles"]["test"].pop("protocol")
+        code, result = self.invoke("doctor")
+        self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+        self.assertIn("profiles.test.protocol", result["error"]["missing"])
+
+    def test_missing_protocol_does_not_silently_select_other_environment(self):
+        self.configured("test")
+        self.configured("prod")
+        self.config["profiles"]["test"].pop("protocol")
+        code,result=self.invoke("doctor")
+        self.assertEqual((code,result["status"]),(2,"CONFIG_ERROR"))
+        self.assertIn("profiles.test.protocol", result["error"]["missing"])
+        code,result=self.invoke("doctor","--profile","prod")
+        self.assertEqual((code,result["profile"]),(0,"prod"))
+
+    def test_protocol_enum_and_openai_model_are_checked(self):
+        self.configured()
+        for protocol in ("OpenAI", "http", "unknown"):
+            self.config["profiles"]["test"]["protocol"] = protocol
+            code, result = self.invoke("doctor")
+            self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+        self.config["profiles"]["test"]["protocol"] = "openai"
+        code, result = self.invoke("doctor")
+        self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+        self.config["profiles"]["test"]["model"] = "gpt-6-luna"
+        code, result = self.invoke("doctor")
+        self.assertEqual((code, result["protocol"]), (0, "openai"))
+        self.assertEqual(result["capabilities"]["question_types"], ["choice", "score", "predicate"])
+        self.assertFalse(result["network_checked"])
+
+    def test_capabilities_need_no_credentials_or_config(self):
+        self.config = None
+        code, result = self.invoke("capabilities", "--protocol", "openai")
+        self.assertEqual((code, result["status"], result["protocol"]), (0, "CAPABILITIES", "openai"))
+        self.assertEqual(result["capabilities"]["max_questions"], 400)
+        self.assertFalse(result["capabilities"]["images"])
+        self.assertIn("evidence", result["capabilities"]["scenarios"]["classification"]["collect"])
+        code, result = self.invoke("capabilities", "--protocol", "systemone")
+        self.assertEqual((code, result["capabilities"]["question_types"]), (0, ["choice", "score", "noul"]))
+        self.assertFalse(self.default_path.exists())
+
     def test_platform_config_paths(self):
         sys.path.insert(0, str(ROOT / "scripts"))
         self.addCleanup(lambda: sys.path.remove(str(ROOT / "scripts")))
@@ -101,7 +145,7 @@ class ConfigTests(CLIBase):
     def test_default_file_is_loaded_and_explicit_path_wins(self):
         self.configured("prod")
         path = self.write_config({"profiles": {
-            "test": {"url": "https://test.invalid/api", "token": "explicit-secret", "model": "explicit-model"}}})
+            "test": {"protocol": "systemone", "url": "https://test.invalid/api", "token": "explicit-secret", "model": "explicit-model"}}})
         code, result = self.invoke("doctor", "--config", path)
         self.assertEqual((code, result["profile"], result["model"], result["config_source"]),
                          (0, "test", "explicit-model", "argument"))
@@ -226,7 +270,7 @@ class ConfigTests(CLIBase):
             self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
 
 
-class LocalServerTests(CLIBase):
+class HTTPBase(CLIBase):
     @classmethod
     def setUpClass(cls):
         cls.calls = []
@@ -286,6 +330,7 @@ class LocalServerTests(CLIBase):
     def url(self, path):
         return f"http://127.0.0.1:{self.server.server_port}{path}"
 
+class LocalServerTests(HTTPBase):
     def test_success_uses_selected_credentials_and_preserves_context(self):
         self.configured("prod", self.url("/prod"))
         code, result = self.invoke("decide", "--profile", "test", payload=PAYLOAD)
@@ -612,6 +657,13 @@ class LocalServerTests(CLIBase):
         code, result = self.invoke("decide", payload=request)
         self.assertEqual((code, result["status"]), (6, "RESPONSE_ERROR"))
 
+    def test_inconsistent_weighted_score_is_rejected(self):
+        payload={"state":"fictional", "questions":{"q1":{"type":"score","instructions":"Rate", "criteria":["Low","High"]}}}
+        type(self).reply={"answers":{"q1":{"type":"score","score":1,"confidence":.9,
+              "probabilities":{"0":1,"1":0},"legend":{"0":"Low","1":"High"}}}}
+        code,result=self.invoke("decide",payload=payload)
+        self.assertEqual((code,result["status"]),(6,"RESPONSE_ERROR"))
+
     def test_score_and_undocumented_types_fail_before_network(self):
         base = {"state": "context", "questions": {"q": {
             "type": "score", "instructions": "Rate it.", "criteria": ["Low", "High"],
@@ -683,7 +735,7 @@ class LocalServerTests(CLIBase):
         type(self).reply = {"answers": {
             "plan": {"type": "choice", "choice": "UNKNOWN", "confidence": 0.9,
                      "probabilities": {"A": 0.04, "B": 0.06, "UNKNOWN": 0.9}},
-            "urgency": {"type": "score", "score": 1, "confidence": 0.4,
+            "urgency": {"type": "score", "score": 0.8, "confidence": 0.4,
                         "probabilities": {"0": 0.2, "1": 0.8},
                         "legend": {"0": "Can wait", "1": "Needs a window"}},
             "duplicate": {"type": "noul", "noul": 0.1},
@@ -691,9 +743,148 @@ class LocalServerTests(CLIBase):
         code, result = self.invoke("decide", payload=request)
         self.assertEqual((code, result["status"]), (0, "NEEDS_HUMAN"))
         self.assertEqual(result["answers"]["plan"]["decision"], "UNKNOWN")
-        self.assertEqual(result["answers"]["urgency"]["decision"], 1)
+        self.assertEqual(result["answers"]["urgency"]["decision"], 0.8)
         self.assertEqual(result["answers"]["duplicate"]["noul"], 0.1)
 
+
+
+class OpenAIProtocolTests(HTTPBase):
+    def setUp(self):
+        super().setUp()
+        self.config["profiles"]["test"].update(protocol="openai", model="gpt-6-luna")
+        type(self).reply = {"model": "gpt-6-luna", "answers": [{
+            "name": "plan", "type": "choice", "choice": "A", "confidence": .9,
+            "probabilities": [{"value": "A", "probability": .9}, {"value": "B", "probability": .08},
+                              {"value": "UNKNOWN", "probability": .02}],
+        }], "usage": {"input_tokens": 40, "output_tokens": 0, "total_tokens": 40,
+                      "input_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0}}}
+
+    def test_openai_choice_converts_wire_and_preserves_evidence(self):
+        code, result = self.invoke("decide", payload=PAYLOAD)
+        self.assertEqual((code, result["status"]), (0, "DECIDED"))
+        self.assertEqual(result["protocol"], "openai")
+        self.assertEqual(result["answers"]["plan"]["choice"], "A")
+        sent = self.calls[0]["body"]
+        self.assertNotIn("state", sent)
+        self.assertEqual(sent["model"], "gpt-6-luna")
+        self.assertEqual(sent["input"], [{"role":"user", "content":[{"type":"input_json", "data":PAYLOAD["state"]}]}])
+        self.assertEqual(sent["questions"][0]["name"], "plan")
+        self.assertEqual(sent["questions"][0]["choices"], [{"value":"A", "description":"less downtime"},
+                           {"value":"B", "description":"lower cost"}, {"value":"UNKNOWN", "description":"insufficient facts"}])
+        self.assertIn("UNKNOWN", sent["questions"][0]["instructions"])
+        self.assertEqual(result["usage"]["input_tokens"], 40)
+        self.assertEqual(len(self.calls), 1)
+        self.assertNotIn("fake-test-credential", json.dumps(result))
+
+    def test_openai_mixed_score_predicate_and_refusal(self):
+        payload = {"state":"fictional evidence", "questions":{
+            "q1":{"type":"score", "instructions":"Rate completeness", "criteria":["Missing", "Partial", "Complete"]},
+            "q2":{"type":"predicate", "instructions":"Is the condition true?"},
+            "q3":copy.deepcopy(PAYLOAD["questions"]["plan"])}}
+        type(self).reply = {"answers":[
+            {"name":"q3", "type":"refusal"},
+            {"name":"q2", "type":"predicate", "probability":.5},
+            {"name":"q1", "type":"score", "score":1.1, "confidence":.7,
+             "probabilities":[{"value":0,"label":"0","probability":.1},
+                              {"value":1,"label":"1","probability":.7},
+                              {"value":2,"label":"2","probability":.2}]}]}
+        code,result=self.invoke("decide", payload=payload)
+        self.assertEqual((code,result["status"]), (0,"NEEDS_HUMAN"))
+        self.assertEqual(result["answers"]["q3"]["reasons"], ["model_refusal"])
+        self.assertEqual(result["answers"]["q3"]["type"], "refusal")
+        self.assertEqual(result["answers"]["q2"]["probability"], .5)
+        self.assertEqual(result["answers"]["q1"]["score"], 1.1)
+        self.assertEqual(result["answers"]["q1"]["legend"], {"0":"Missing","1":"Partial","2":"Complete"})
+        sent=self.calls[0]["body"]
+        self.assertEqual(sent["input"], "fictional evidence")
+        self.assertEqual(sent["questions"][0]["levels"], [{"label":"0","description":"Missing"},
+                          {"label":"1","description":"Partial"},{"label":"2","description":"Complete"}])
+
+    def test_probability_routing_requires_explicit_ordered_bounds(self):
+        payload={"state":"fictional", "questions":{"q1":{"type":"predicate","instructions":"Condition?",
+                 "thresholds":{"false_at_most":.2,"true_at_least":.8}}}}
+        for probability, decision, status in ((.1,False,"DECIDED"),(.2,False,"DECIDED"),(.5,None,"NEEDS_HUMAN"),(.8,True,"DECIDED"),(.9,True,"DECIDED")):
+            with self.subTest(probability=probability):
+                type(self).reply={"answers":[{"name":"q1","type":"predicate","probability":probability}]}
+                code,result=self.invoke("decide", payload=payload)
+                self.assertEqual((code,result["status"]), (0,status))
+                self.assertIs(result["answers"]["q1"]["decision"], decision)
+                self.assertEqual(result["answers"]["q1"]["probability"], probability)
+                self.assertNotIn("thresholds", self.calls[-1]["body"]["questions"][0])
+        for bounds in ({"false_at_most":.8,"true_at_least":.2},{"false_at_most":.5,"true_at_least":.5},
+                       {"false_at_most":True,"true_at_least":.9},{"true_at_least":.8}):
+            payload["questions"]["q1"]["thresholds"]=bounds
+            before=len(self.calls)
+            code,result=self.invoke("decide",payload=payload)
+            self.assertEqual((code,result["status"]), (3,"INPUT_ERROR"))
+            self.assertEqual(len(self.calls),before)
+
+    def test_protocol_specific_types_and_unsupported_inputs_fail_before_network(self):
+        invalid=[{"state":"x","questions":{"q1":{"type":"noul","instructions":"Condition?"}}},
+                 {"input":"x","questions":[{"name":"q1","type":"predicate","instructions":"Condition?"}]},
+                 {"state":"x","questions":{"q1":{"type":"predicate","instructions":[{"type":"input_image","image_url":"https://example.com/a.png"}]}}}]
+        for payload in invalid:
+            code,result=self.invoke("decide",payload=payload)
+            self.assertEqual((code,result["status"]), (3,"INPUT_ERROR"))
+        self.assertEqual(self.calls,[])
+
+    def test_duplicate_missing_unknown_and_malformed_answers_fail_closed(self):
+        answer=copy.deepcopy(type(self).reply["answers"][0])
+        cases=[[answer,answer],[],[{**answer,"name":"unexpected"}], [{**answer,"type":"predicate","probability":.7}],
+               [{**answer,"probabilities":[{"value":"A","probability":1},{"value":"A","probability":0}]}],
+               [{**answer,"probabilities":[{"value":True,"probability":.9},{"value":"UNKNOWN","probability":.1}]}]]
+        for answers in cases:
+            type(self).reply={"answers":answers}
+            code,result=self.invoke("decide",payload=PAYLOAD)
+            self.assertEqual((code,result["status"]), (6,"RESPONSE_ERROR"))
+            self.assertNotIn("answers",result)
+
+    def test_structured_json_limits_and_arrays_are_explicit(self):
+        for state in ([{"x":1}], ["fact",2]):
+            type(self).reply={"answers":[{"name":"q1","type":"predicate","probability":.9}]}
+            code,result=self.invoke("decide",payload={"state":state,"questions":{"q1":{"type":"predicate","instructions":"Condition?"}}})
+            self.assertEqual(code,0)
+            actual=self.calls[-1]["body"]["input"]
+            if isinstance(state[0],dict):
+                self.assertEqual(actual[0]["content"][0]["data"],state)
+            else:
+                self.assertEqual(json.loads(actual),state)
+        payload={"state":{"items":[1]*10001},"questions":{"q1":{"type":"predicate","instructions":"Condition?"}}}
+        before=len(self.calls)
+        code,result=self.invoke("decide",payload=payload)
+        self.assertEqual((code,result["status"]), (3,"INPUT_ERROR"))
+        self.assertEqual(len(self.calls),before)
+
+    def test_openai_accepts_400_questions_but_not_401(self):
+        question={"type":"predicate","instructions":"Condition?"}
+        payload={"state":"fictional","questions":{f"q{i}":question for i in range(400)}}
+        type(self).reply={"answers":[{"name":f"q{i}","type":"predicate","probability":.7} for i in range(400)]}
+        code,result=self.invoke("decide",payload=payload)
+        self.assertEqual((code,len(result.get("answers",{}))), (0,400))
+        payload["questions"]["q400"]=question
+        before=len(self.calls)
+        code,result=self.invoke("decide",payload=payload)
+        self.assertEqual((code,result["status"]),(3,"INPUT_ERROR"))
+        self.assertEqual(len(self.calls),before)
+
+    def test_original_array_credentials_are_blocked_before_json_string_encoding(self):
+        for token in ('fake"credential', 'fake\\credential'):
+            self.config["profiles"]["test"]["token"]=token
+            payload={"state":["evidence",token],"questions":{"q1":{"type":"predicate","instructions":"Condition?"}}}
+            code,result=self.invoke("decide",payload=payload)
+            self.assertEqual((code,result["status"]),(3,"INPUT_ERROR"))
+            self.assertEqual(self.calls,[])
+            self.assertNotIn(token,json.dumps(result))
+
+    def test_openai_http_failure_and_credential_echo_have_no_retry(self):
+        self.config["profiles"]["test"]["url"]=self.url("/rate")
+        code,result=self.invoke("decide",payload=PAYLOAD)
+        self.assertEqual((code,result["status"],len(self.calls)),(5,"RATE_LIMITED",1))
+        self.config["profiles"]["test"]["url"]=self.url("/success")
+        type(self).reply={"answers":[],"echo":"fake-test-credential"}
+        code,result=self.invoke("decide",payload=PAYLOAD)
+        self.assertEqual((code,result["status"]),(6,"RESPONSE_ERROR"))
+        self.assertNotIn("fake-test-credential",json.dumps(result))
 
 if __name__ == "__main__":
     unittest.main()

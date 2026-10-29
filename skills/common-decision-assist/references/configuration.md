@@ -15,22 +15,24 @@
 
 ## 文件格式
 
-[空模板](../assets/config.example.json) 可以直接复制后填写。至少填入一套完整 URL/Token/model 组合；不要求同时拥有 test 和 prod。
+[空模板](../assets/config.example.json) 可以直接复制后填写。至少填入一套完整 protocol/URL/Token/model 组合；不要求同时拥有 test 和 prod。
 
 ```json
 {
   "timeout_seconds": 30,
   "request_budget_seconds": 5,
   "profiles": {
-    "test": {"url": "https://your-test-host/v1/systemone", "token": "YOUR_LOCAL_TOKEN", "model": "your-test-model"},
-    "prod": {"url": "", "token": "", "model": ""}
+    "test": {"protocol": "systemone", "url": "https://your-test-host/v1/systemone", "token": "YOUR_LOCAL_TOKEN", "model": "your-test-model"},
+    "prod": {"protocol": "", "url": "", "token": "", "model": ""}
   }
 }
 ```
 
-以上地址、模型和 Token 都是占位符，不能直接调用。脚本使用完整 URL，不自动追加路径；`model` 是接口接受的不透明标识，无供应商默认值。`timeout_seconds` 是单次网络 I/O 超时，默认 30；`request_budget_seconds` 是整体请求预算，默认 5，覆盖 DNS、连接和读取。两者均要求 `0 < x <= 300`，实际 I/O 不超过预算。整体调用允许少量进程启动/清理开销，不代表整个任务 SLA。文件为 UTF-8 JSON，拒绝重复 key、未知字段和非有限数值。
+以上地址、模型和 Token 都是占位符，不能直接调用。`protocol` 必填，只接受 `systemone` 或 `openai`；不得从 URL 或模型名猜测。0.3.x 配置升级到 0.4.0 时，必须为已使用的 profile 补此字段；缺失会报告 CONFIG_ERROR，不默认旧协议。未使用的 profile 可省略或保留空字段。
 
-不在文件外层放 `model` 或 `profile`。每套配置使用自己的 URL、Token 和模型。只有一套三个字段均有值时自动使用该套；两套都完整时，脚本返回 `PROFILE_REQUIRED`，由 Agent 询问用户本次选择 test 还是 prod，再用 `--profile test` 或 `--profile prod` 执行。没有默认 PROD 优先或持久化环境切换。
+OpenAI 使用 `protocol=openai`、完整地址 `https://api.openai.com/v1/decisions` 和模型 `gpt-6-luna`；本版校验此模型约束。`systemone` 继续使用服务接受的模型 ID，不要求相同模型。凭据只填本地 token 字段，不在聊天或仓库中提交。脚本使用完整 URL，不自动追加路径；`model` 必须显式填写，无默认值；OpenAI 另有上述模型约束。`timeout_seconds` 是单次网络 I/O 超时，默认 30；`request_budget_seconds` 是整体请求预算，默认 5，覆盖 DNS、连接和读取。两者均要求 `0 < x <= 300`，实际 I/O 不超过预算。整体调用允许少量进程启动/清理开销，不代表整个任务 SLA。文件为 UTF-8 JSON，拒绝重复 key、未知字段和非有限数值。
+
+不在文件外层放 `model` 或 `profile`。每套配置使用自己的 URL、Token 和模型。只有一套四个字段均有值时自动使用该套；两套都完整时，脚本返回 `PROFILE_REQUIRED`，由 Agent 询问用户本次选择 test 还是 prod，再用 `--profile test` 或 `--profile prod` 执行。没有默认 PROD 优先或持久化环境切换。
 
 明确选择的环境缺失、地址无效、鉴权失败或超时都不会改用另一套。只有 URL/Token、缺少 model 的一套不算完整。两个超时参数为全局网络参数，与每套模型配置分开。已有文件没有 `request_budget_seconds` 时自动取 5，不会改写原文件或凭据。
 
@@ -40,7 +42,7 @@
 
 1. 在 Agent 实际执行环境中运行 `python3 <SKILL_DIR>/scripts/decision.py doctor`。
 2. 根据 `error.config_path`、`error.config_template` 和 `error.missing` 告知用户应完善的文件与字段。缺少两套配置时说明只需选择一套补齐，不要求全部填写。
-3. 由用户在本地填写 URL、模型和 Token，不要求把 Token 发入聊天。若 Agent 代为初始化，先确认目标及写入范围；已有明确授权不重复询问。已有文件先读取必要结构，保留其他配置，不整份覆盖。
+3. 由用户在本地填写 协议、URL、模型和 Token，不要求把 Token 发入聊天。若 Agent 代为初始化，先确认目标及写入范围；已有明确授权不重复询问。已有文件先读取必要结构，保留其他配置，不整份覆盖。
 4. 用户完成配置并要求继续后，重新运行 `doctor`，再按原请求环境调用。自检成功不等于网络调用成功。
 
 跨平台创建模板的命令如下。先把 `<SKILL_DIR>` 替换为安装路径；Windows 将 `python3` 换为 `python`。它只创建新文件，已存在则拒绝覆盖：
@@ -53,7 +55,7 @@ macOS/Linux 用 `0600` 限制配置访问。Windows 的 `chmod` 不能替代 ACL
 
 ## 自检与运行
 
-`doctor` 仅本地检查：profile/model、配置位置、两套完整性状态，`network_checked=false`。不打印 URL 或 Token。`READY` 不能证明模型可用、权限有效或网络联通。真实调试应明确传 `--profile test` 并使用合成/脱敏输入。
+`doctor` 仅本地检查：profile/protocol/model、实际 capabilities、配置位置、两套完整性状态，`network_checked=false`。不打印 URL 或 Token。`READY` 不能证明模型可用、权限有效或网络联通。真实调试应明确传 `--profile test` 并使用合成/脱敏输入。
 
 ```bash
 python3 <SKILL_DIR>/scripts/decision.py doctor
@@ -64,6 +66,15 @@ Python 3.10+，全部依赖为标准库，无 pip/npm 安装步骤。一次 deci
 
 ## TEST 调用日志
 
-TEST 的 `decide` 向配置文件所在目录的 `decision.log` 追加一行 JSON；显式 `--config` 时日志跟随该文件目录。包含 UTC 时间、唯一请求 ID、profile、模型、结果状态、耗时、是否已尝试 API，以及答案里已有的 type/choice/score/noul/decision/confidence/needs_human；不记录 probabilities 或 legend。HTTP 错误可带状态码。输入校验失败也记录，但 `api_call_attempted=false`，不能当成真实服务调用。
+TEST 的 `decide` 向配置文件所在目录的 `decision.log` 追加一行 JSON；显式 `--config` 时日志跟随该文件目录。包含 UTC 时间、唯一请求 ID、profile、protocol、模型、结果状态、耗时、是否已尝试 API，以及答案里已有的 type/choice/score/noul/probability/requested_type/decision/confidence/needs_human；不记录 probabilities 或 legend。HTTP 错误可带状态码。输入校验失败也记录，但 `api_call_attempted=false`，不能当成真实服务调用。
 
 不记录完整 state、Token、URL、题目正文或上游原始错误体。PROD 与 `doctor` 不写此日志。macOS/Linux 文件权限为 0600，Windows 继承所在私有目录 ACL。日志只追加，不做自动轮换或删除；用户可按本地数据保留要求管理。日志写入失败返回 `LOG_ERROR`（退出码 8），`result` 中保留原调用结果，不应为补日志重复请求 API。脚本拒绝将日志写入符号链接或非普通文件。
+
+## 不联网的能力查询
+
+```bash
+python3 <SKILL_DIR>/scripts/decision.py capabilities --protocol openai
+python3 <SKILL_DIR>/scripts/decision.py capabilities --protocol systemone
+```
+
+此命令不读配置、不需要 Key，返回已实现题型、限制、场景所需参数与收集清单。配置成功后 doctor 也返回同一能力信息，不发起健康探测。完整收集流程见 [场景说明](scenarios.md)。配置协议不等于获得该厂商所有功能。

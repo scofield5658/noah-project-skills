@@ -7,6 +7,8 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 import sys
 from urllib.parse import urlsplit
 
+from decision_capabilities import get_capabilities
+
 
 MAX_BYTES = 1024 * 1024
 SCHEMA_VERSION = "decision-assist/v1"
@@ -87,8 +89,8 @@ def _load_file(path):
     if not isinstance(profiles, dict) or set(profiles) - {"test", "prod"}:
         raise DecisionError("CONFIG_ERROR", "Only test and prod profiles are supported.")
     for name, profile in profiles.items():
-        if not isinstance(profile, dict) or set(profile) - {"url", "token", "model"}:
-            raise DecisionError("CONFIG_ERROR", "Profile must contain only url, token and model.", profile=name)
+        if not isinstance(profile, dict) or set(profile) - {"protocol", "url", "token", "model"}:
+            raise DecisionError("CONFIG_ERROR", "Profile must contain only protocol, url, token and model.", profile=name)
         for key, value in profile.items():
             _string(value, key)
     return data
@@ -130,6 +132,7 @@ class RuntimeConfig:
     secrets: tuple = field(repr=False)
     config_path: str
     config_source: str
+    protocol: str
     request_budget_seconds: float = 5.0
 
     def report(self):
@@ -137,7 +140,8 @@ class RuntimeConfig:
             "schema_version": SCHEMA_VERSION, "status": "READY", "profile": self.profile,
             "profile_source": self.profile_source, "model": self.model,
             "timeout_seconds": self.timeout_seconds, "environments": self.environments,
-            "network_checked": False,
+            "network_checked": False, "protocol": self.protocol,
+            "capabilities": get_capabilities(self.protocol),
             "config_path": self.config_path, "config_source": self.config_source,
             "request_budget_seconds": self.request_budget_seconds,
         }
@@ -150,7 +154,7 @@ def resolve_config(profile=None, config_path=None):
         "config_path": path,
         "config_template": str(Path(__file__).resolve().parents[1] / "assets" / "config.example.json"),
         "next_steps": [
-            "Create the user configuration from config_template; fill url, token and model within at least one profile.",
+            "Create the user configuration from config_template; fill protocol (systemone or openai), url, token and model within at least one profile.",
             "Enter the authorized URL, model identifier and local credential; never send the Token in chat or commit it.",
             "Run doctor again; if both profiles are complete, ask the user to select test or prod for this invocation.",
         ],
@@ -163,12 +167,19 @@ def resolve_config(profile=None, config_path=None):
     profiles, readiness, secrets = {}, {}, []
     for name in ("test", "prod"):
         entry = data.get("profiles", {}).get(name, {})
-        url, token, model = (entry.get(key, "").strip() for key in ("url", "token", "model"))
-        profiles[name] = (url, token, model)
-        readiness[name] = {"url_present": bool(url), "token_present": bool(token), "model_present": bool(model),
-                           "complete": bool(url and token and model)}
+        protocol, url, token, model = (entry.get(key, "").strip() for key in ("protocol", "url", "token", "model"))
+        profiles[name] = (protocol, url, token, model)
+        readiness[name] = {"protocol_present": bool(protocol), "url_present": bool(url), "token_present": bool(token), "model_present": bool(model),
+                           "complete": bool(protocol and url and token and model)}
         if token:
             secrets.append(token)
+    # A legacy connection must not be silently skipped in favor of another environment.
+    if profile is None:
+        missing_protocol = [f"profiles.{name}.protocol" for name in ("test", "prod")
+                            if all(profiles[name][1:]) and not profiles[name][0]]
+        if missing_protocol:
+            raise DecisionError("CONFIG_ERROR", "Existing connection requires an explicit protocol; no fallback was attempted.",
+                                missing=missing_protocol, **guidance)
     complete = [name for name in ("test", "prod") if readiness[name]["complete"]]
     if profile is not None and profile not in ("test", "prod"):
         raise DecisionError("CONFIG_ERROR", "Selected profile must be test or prod.", **guidance)
@@ -178,14 +189,18 @@ def resolve_config(profile=None, config_path=None):
     selected = profile if profile is not None else complete[0] if complete else None
     if selected is None:
         missing = [f"profiles.{name}.{key}" for name, values in profiles.items()
-                   for key, value in zip(("url", "token", "model"), values) if not value]
-        raise DecisionError("CONFIG_ERROR", "Configure at least one complete URL/Token/model combination.",
+                   for key, value in zip(("protocol", "url", "token", "model"), values) if not value]
+        raise DecisionError("CONFIG_ERROR", "Configure at least one complete protocol/URL/Token/model combination.",
                             missing=missing, environments=readiness, **guidance)
-    url, token, model = profiles[selected]
-    missing = [f"profiles.{selected}.{key}" for key, value in zip(("url", "token", "model"), (url, token, model)) if not value]
+    protocol, url, token, model = profiles[selected]
+    missing = [f"profiles.{selected}.{key}" for key, value in zip(("protocol", "url", "token", "model"), (protocol, url, token, model)) if not value]
     if missing:
         raise DecisionError("CONFIG_ERROR", "Selected environment is incomplete; no fallback was attempted.",
                             profile=selected, missing=missing, environments=readiness, **guidance)
+    if protocol not in ("systemone", "openai"):
+        raise DecisionError("CONFIG_ERROR", "Protocol must be systemone or openai.", profile=selected, field="protocol")
+    if protocol == "openai" and model != "gpt-6-luna":
+        raise DecisionError("CONFIG_ERROR", "The openai Decisions adapter currently supports only gpt-6-luna.", profile=selected, field="model")
     try:
         _endpoint(url)
     except DecisionError as error:
@@ -216,4 +231,4 @@ def resolve_config(profile=None, config_path=None):
     except (ValueError, TypeError, OverflowError):
         raise DecisionError("CONFIG_ERROR", "Request budget must be greater than 0 and at most 300 seconds.", profile=selected) from None
     return RuntimeConfig(selected, "argument" if profile is not None else "only_complete", url, token, model,
-                         timeout, readiness, tuple(set(secrets)), path, config_source, budget)
+                         timeout, readiness, tuple(set(secrets)), path, config_source, protocol, budget)

@@ -13,6 +13,7 @@ import uuid
 
 from decision_config import DecisionError, MAX_BYTES, SCHEMA_VERSION, parse_json, read_file, resolve_config
 from decision_protocol import decide
+from decision_capabilities import get_capabilities
 from decision_log import append_test_record
 
 
@@ -22,7 +23,7 @@ class Parser(argparse.ArgumentParser):
 
 
 def _parser():
-    parser = Parser(description="Use a configured Decision API for choice, score, and noul questions.")
+    parser = Parser(description="Use a configured Decision API for choice, score, and protocol-specific probability questions.")
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("doctor", "decide"):
         command = commands.add_parser(name, help="Local config checks only" if name == "doctor" else "Send one decision request")
@@ -32,6 +33,8 @@ def _parser():
             command.add_argument("--input", default="-", help="JSON file or '-' for stdin (default)")
             command.add_argument("--min-confidence", type=float, help="Optional conservative human-review threshold, 0..1")
             command.add_argument("--min-margin", type=float, help="Optional top-two probability gap threshold, 0..1")
+    capability = commands.add_parser("capabilities", help="Show implemented scenarios without config or networking")
+    capability.add_argument("--protocol", required=True, choices=("systemone", "openai"))
     return parser
 
 
@@ -42,6 +45,11 @@ def main():
     execution = {"request_id": str(uuid.uuid4()), "api_call_attempted": False}
     try:
         args = _parser().parse_args()
+        if args.command == "capabilities":
+            print(json.dumps({"schema_version": SCHEMA_VERSION, "status": "CAPABILITIES", "protocol": args.protocol,
+                              "capabilities": get_capabilities(args.protocol), "network_checked": False,
+                              "next_action": "collect_inputs"}, ensure_ascii=True))
+            return 0
         config = resolve_config(args.profile, args.config)
         if args.command == "doctor":
             result = config.report()
@@ -64,6 +72,7 @@ def main():
             result["profile"] = profile
         if config:
             result["model"] = config.model
+            result["protocol"] = config.protocol
         code = error.exit_code
     except KeyboardInterrupt:
         result = {"schema_version": SCHEMA_VERSION, "status": "CANCELLED", "error": {"message": "Request interrupted; outcome may be unknown."}}
