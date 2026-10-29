@@ -25,7 +25,7 @@ from urllib.parse import unquote, urlsplit, urlunsplit
 
 
 VERSION = "0.2.1"
-REQUIRED_PYTHON = (3, 12, 13)
+REQUIRED_PYTHON = (3, 12)
 CONFIG_DIR_NAME = "local-knowledge-agent"
 CONFIG_FILE_NAME = "config.json"
 RESERVED_DOMAIN_IDS = {
@@ -129,9 +129,9 @@ def _expand_path_value(value: str, env: Mapping[str, str]) -> str:
 
 
 def runtime_supported(implementation: str, version: Sequence[int]) -> bool:
-    """Return whether a runtime matches the shared CLI contract exactly."""
+    """Return whether the runtime belongs to the supported CPython 3.12 family."""
 
-    return implementation == "CPython" and tuple(version) == REQUIRED_PYTHON
+    return implementation == "CPython" and tuple(version[:2]) == REQUIRED_PYTHON
 
 
 def config_candidates(env: Mapping[str, str], platform: str) -> list[Path]:
@@ -815,7 +815,7 @@ def find_python_command(
     *,
     runner: Runner = _default_runner,
 ) -> dict[str, Any]:
-    """Ask uv for exact CPython 3.12.13 without probing system Python."""
+    """Ask uv for managed CPython 3.12.x without probing system Python or downloading."""
 
     del env, platform
 
@@ -827,13 +827,13 @@ def find_python_command(
             "next_action": "pure_skill_fallback",
             "fallback": "pure-skill",
             "requires_user_action": False,
-            "required_version": "CPython 3.12.13",
+            "required_version": "CPython 3.12.x",
         }
 
     if not isinstance(python_config, Mapping):
         raise ConfigError("python must be an object")
     uv_command = _uv_command(python_config.get("uv_command", ["uv"]))
-    probe = [*uv_command, "python", "find", "cpython-3.12.13"]
+    probe = [*uv_command, "python", "find", "cpython-3.12", "--managed-python", "--no-python-downloads"]
     try:
         found = runner(probe)
     except (OSError, subprocess.SubprocessError):
@@ -851,7 +851,7 @@ def find_python_command(
             "setup_reference": (
                 "https://docs.astral.sh/uv/getting-started/installation/"
             ),
-            "required_version": "CPython 3.12.13",
+            "required_version": "CPython 3.12.x",
         }
     if found.returncode != 0 or not found.stdout.strip():
         return {
@@ -863,12 +863,12 @@ def find_python_command(
             "fallback": "pure-skill",
             "requires_user_action": True,
             "guidance": (
-                "Ask the user to provision CPython 3.12.13 with uv; do not "
+                "Ask the user to provision CPython 3.12.x with uv; do not "
                 "run uv python install or uv tool install without explicit "
                 "authorization"
             ),
-            "user_command": [*uv_command, "python", "install", "3.12.13"],
-            "required_version": "CPython 3.12.13",
+            "user_command": [*uv_command, "python", "install", "3.12"],
+            "required_version": "CPython 3.12.x",
         }
     return {
         "status": "available",
@@ -878,7 +878,7 @@ def find_python_command(
         "uv_command": uv_command,
         "next_action": "none",
         "requires_user_action": False,
-        "required_version": "CPython 3.12.13",
+        "required_version": "CPython 3.12.x",
     }
 
 
@@ -2433,7 +2433,7 @@ def main(
             {
                 "status": "enhancement_unavailable",
                 "error": "python_version",
-                "required": "CPython 3.12.13",
+                "required": "CPython 3.12.x",
                 "fallback": "pure-skill",
             }
         )

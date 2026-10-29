@@ -108,9 +108,9 @@ local-knowledge-agent normalize-paths --stage wiki --apply --yes
 
 ## 增强能力与降级
 
-优先使用通过 uv 安装的 `local-knowledge-agent` 命令。从源码运行时，只能通过 uv 使用指定的 CPython 3.12.13 调用启动器，不使用系统 Python、手动管理的虚拟环境或任意解释器路径。uv、其管理的 CPython、已安装命令或 Obsidian CLI 不可用时，直接以纯 Skill 方式执行相同的配置、路由、检索和 Markdown 规则；增强能力缺失不阻塞普通知识工作。
+优先使用通过 uv 安装的 `local-knowledge-agent` 命令。从源码运行时，只能通过 uv 使用 CPython 3.12.x（任一补丁版本） 调用启动器，不使用系统 Python、手动管理的虚拟环境或任意解释器路径。uv、其管理的 CPython、已安装命令或 Obsidian CLI 不可用时，直接以纯 Skill 方式执行相同的配置、路由、检索和 Markdown 规则；增强能力缺失不阻塞普通知识工作。
 
-需要 Python 增强但缺少 uv 时，引导用户查看官方安装文档，并继续使用纯 Skill。已有 uv 但缺少 CPython 3.12.13 时，展示供用户执行的 uv 环境准备命令。除非用户在了解目标和影响后明确授权，否则不得运行 uv 安装器、`uv python install`、`uv tool install`、系统包管理器、`pip` 或其他 Python 环境变更。不得修改或替换全局 Python。
+需要 Python 增强但缺少 uv 时，引导用户查看官方安装文档，并继续使用纯 Skill。已有 uv 但缺少 CPython 3.12.x 时，展示供用户执行的 uv 环境准备命令。除非用户在了解目标和影响后明确授权，否则不得运行 uv 安装器、`uv python install`、`uv tool install`、系统包管理器、`pip` 或其他 Python 环境变更。不得修改或替换全局 Python。
 
 仅在用户要求配置环境或需要安装指引时，执行[配置与本地环境](references/configuration.md)中的相关指导。
 
@@ -119,7 +119,7 @@ local-knowledge-agent normalize-paths --stage wiki --apply --yes
 | 依赖 | 是否必需 | 版本或来源 | 用途 | 检查方式 | 缺失时处理 |
 | --- | --- | --- | --- | --- | --- |
 | Markdown 文件系统访问 | 是 | Agent 运行时 | 核心读写 | 核验 `knowledge_root` | 询问根目录或访问权限 |
-| CPython | 否 | uv 管理的指定版本 3.12.13 | 确定性 CLI | `uv python find cpython-3.12.13` | 展示 uv 准备命令；也可使用纯 Skill |
+| CPython | 否 | uv 管理的 CPython 3.12.x（任一补丁版本） | 确定性 CLI | `uv python find cpython-3.12 --managed-python --no-python-downloads` | 展示 uv 准备命令；也可使用纯 Skill |
 | uv | 仅增强能力需要 | 建议 0.11.2+ | 管理所有 Python 增强环境 | `uv --version` | 提供安装指引，继续使用纯 Skill |
 | `uv_build` | 仅构建时需要 | `>=0.11.2,<0.12.0`，来自 Python 包索引 | 包构建后端 | 隔离的 `uv tool install` | 跳过安装，使用纯 Skill |
 | Git | 仅仓库路径迁移需要 | 用户已安装的 Git CLI | 离线读取 fetch remote | `git --version` | 保留外部路径并报告警告 |

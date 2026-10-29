@@ -2,7 +2,7 @@
 name = "local-knowledge-agent-cli"
 version = "0.2.1"
 description = "local-knowledge-agent 技能的确定性本地辅助程序"
-requires-python = "==3.12.13"
+requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [project.scripts]

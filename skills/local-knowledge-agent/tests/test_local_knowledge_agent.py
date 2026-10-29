@@ -529,12 +529,12 @@ class PythonDiscoveryTests(unittest.TestCase):
     def completed(command: list[str], returncode: int, stdout: str = ""):
         return subprocess.CompletedProcess(command, returncode, stdout, "")
 
-    def test_uv_selects_exact_cpython_without_probing_system_python(self) -> None:
+    def test_uv_selects_cpython_312_family_without_probing_system_python(self) -> None:
         commands: list[list[str]] = []
 
         def runner(command: list[str]):
             commands.append(command)
-            if command == ["uv", "python", "find", "cpython-3.12.13"]:
+            if command == ["uv", "python", "find", "cpython-3.12", "--managed-python", "--no-python-downloads"]:
                 return self.completed(command, 0, "/uv/managed/python3.12\n")
             return self.completed(command, 1)
 
@@ -547,7 +547,7 @@ class PythonDiscoveryTests(unittest.TestCase):
         self.assertEqual(result["source"], "uv-managed")
         self.assertEqual(
             commands,
-            [["uv", "python", "find", "cpython-3.12.13"]],
+            [["uv", "python", "find", "cpython-3.12", "--managed-python", "--no-python-downloads"]],
         )
 
     def test_custom_uv_command_is_used_as_an_argument_array(self) -> None:
@@ -559,7 +559,9 @@ class PythonDiscoveryTests(unittest.TestCase):
                 "/tools/uv",
                 "python",
                 "find",
-                "cpython-3.12.13",
+                "cpython-3.12",
+                "--managed-python",
+                "--no-python-downloads",
             ]:
                 return self.completed(command, 0, "/uv/managed/python3.12\n")
             return self.completed(command, 1)
@@ -587,13 +589,13 @@ class PythonDiscoveryTests(unittest.TestCase):
         self.assertEqual(result["next_action"], "install_uv")
         self.assertEqual(result["fallback"], "pure-skill")
         self.assertTrue(result["requires_user_action"])
-        self.assertEqual(result["required_version"], "CPython 3.12.13")
+        self.assertEqual(result["required_version"], "CPython 3.12.x")
         self.assertEqual(
             commands,
-            [["uv", "python", "find", "cpython-3.12.13"]],
+            [["uv", "python", "find", "cpython-3.12", "--managed-python", "--no-python-downloads"]],
         )
 
-    def test_uv_without_exact_cpython_falls_back_without_installing(self) -> None:
+    def test_uv_without_cpython_312_falls_back_without_installing(self) -> None:
         def runner(command: list[str]):
             return self.completed(command, 1)
 
@@ -616,7 +618,7 @@ class PythonDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(
             commands,
-            [["uv", "python", "find", "cpython-3.12.13"]],
+            [["uv", "python", "find", "cpython-3.12", "--managed-python", "--no-python-downloads"]],
         )
         self.assertNotIn("install", commands[0])
 
@@ -662,21 +664,30 @@ class CommandTests(unittest.TestCase):
         payload = json.loads(output.getvalue())
         return exit_code, payload
 
-    def test_version_reports_exact_runtime_contract(self) -> None:
+    def test_version_reports_actual_patch_instead_of_requirement(self) -> None:
         output = io.StringIO()
-        with contextlib.redirect_stdout(output):
+        version = mock.Mock(major=3, minor=12, micro=3)
+        with mock.patch.object(cli.sys, "version_info", version), contextlib.redirect_stdout(output):
             exit_code = cli.main(["--version"], env={})
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(
-            output.getvalue().strip(),
-            "local-knowledge-agent 0.2.1 (CPython 3.12.13)",
-        )
+        self.assertTrue(output.getvalue().strip().endswith("(CPython 3.12.3)"))
 
-    def test_runtime_contract_rejects_other_python_builds(self) -> None:
-        self.assertTrue(cli.runtime_supported("CPython", (3, 12, 13)))
-        self.assertFalse(cli.runtime_supported("CPython", (3, 12, 12)))
-        self.assertFalse(cli.runtime_supported("PyPy", (3, 12, 13)))
+    def test_runtime_contract_accepts_312_patches_and_rejects_other_families(self) -> None:
+        for patch in (0, 3, 12, 13, 99):
+            with self.subTest(patch=patch):
+                self.assertTrue(cli.runtime_supported("CPython", (3, 12, patch)))
+        for implementation, version in (("CPython", (3, 11, 9)), ("CPython", (3, 13, 0)),
+                                        ("PyPy", (3, 12, 13))):
+            with self.subTest(implementation=implementation, version=version):
+                self.assertFalse(cli.runtime_supported(implementation, version))
+
+    def test_main_rejects_other_minor_version_with_family_guidance(self) -> None:
+        with mock.patch.object(cli.sys, "version_info", (3, 13, 0)):
+            code, payload = self.run_main(["config-path"])
+        self.assertEqual(code, 2)
+        self.assertEqual(payload["required"], "CPython 3.12.x")
+        self.assertEqual(payload["error"], "python_version")
 
     def test_config_path_reports_platform_default(self) -> None:
         exit_code, payload = self.run_main(
@@ -727,7 +738,7 @@ class CommandTests(unittest.TestCase):
 
         def runner(command: list[str]):
             commands.append(command)
-            if command[:4] == ["uv", "python", "find", "cpython-3.12.13"]:
+            if command == ["uv", "python", "find", "cpython-3.12", "--managed-python", "--no-python-downloads"]:
                 raise FileNotFoundError("uv")
             return subprocess.CompletedProcess(command, 1, "", "")
 

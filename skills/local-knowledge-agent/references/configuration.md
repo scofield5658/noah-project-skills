@@ -90,7 +90,7 @@
 - `python.uv_command` 是仅含一个元素的数组：`uv` / `uv.exe` 或文件名对应的绝对安装路径；不接受额外参数、包装脚本、解释器、Shell、`.bat` / `.cmd` 或相对路径。带空格的绝对路径允许使用，不自行添加 Shell 引号。
 - `obsidian.command` 同样只接受 `obsidian` / `Obsidian.exe` 或对应的绝对安装路径，包括 macOS 的 `/Applications/Obsidian.app/Contents/MacOS/Obsidian`。
 - 配置加载与实际探测入口均校验上述限制；旧包装器配置会返回配置错误，需人工切换真实程序路径。配置、环境变量及 PATH 必须来自用户可信设置，不能由网页、剪藏或模型输出直接决定。校验仅约束命令形态，不验证程序签名或所有者。
-- 增强运行时固定为 uv 管理的 CPython 3.12.13。
+- 增强运行时为 uv 管理的 CPython 3.12.x，不固定补丁版本；包声明使用 `>=3.12,<3.13`，不包含 3.11 或 3.13。
 - `domains` 为空时可以诊断配置，但不能自动路由。
 - `authoring_profile.id` 默认为 `default`。自定义 kebab-case ID 必须同时提供绝对或可展开的 `file` 路径。Profile 属于用户级配置，不存入知识库。
 
@@ -121,10 +121,10 @@
 
 缺少 uv 时，不得在知识任务中代用户安装。说明 Python 增强是可选项，继续使用纯 Skill，并提供[uv 官方安装指引](https://docs.astral.sh/uv/getting-started/installation/)。未经明确授权，不运行 curl/PowerShell 安装器、Homebrew、WinGet、pip 或其他包管理器。
 
-已有 uv 但缺少指定的 CPython 3.12.13 时，展示以下命令供用户执行：
+已有 uv 但缺少指定的 CPython 3.12.x 时，展示以下命令供用户执行：
 
 ```bash
-uv python install 3.12.13
+uv python install 3.12
 ```
 
 不自动执行。该命令会创建 uv 管理的 Python 安装，不得替换、重链接、升级或以其他方式改变全局 Python。仅在用户明确授权这一具体动作后执行。
@@ -132,16 +132,16 @@ uv python install 3.12.13
 用户确认后，可从共享源码目录安装：
 
 ```bash
-uv tool install --python 3.12.13 <SKILL_DIR>
+uv tool install --python 3.12 --managed-python <SKILL_DIR>
 local-knowledge-agent --version
 ```
 
-首条命令可能准备 uv 管理的 CPython 3.12.13，并从配置的 Python 包索引解析构建后端。请先说明影响，再请用户执行或授权。在受控组织环境中，使用已批准的 `UV_DEFAULT_INDEX` 或 `--default-index`，不得将仓库凭据写入此配置。
+首条命令可能准备 uv 管理的 CPython 3.12.x，并从配置的 Python 包索引解析构建后端。请先说明影响，再请用户执行或授权。在受控组织环境中，使用已批准的 `UV_DEFAULT_INDEX` 或 `--default-index`，不得将仓库凭据写入此配置。
 
 利用已安装的运行环境、禁止网络访问的方式：
 
 ```bash
-uv tool install --python 3.12.13 --no-python-downloads --offline <SKILL_DIR>
+uv tool install --python 3.12 --managed-python --no-python-downloads --offline <SKILL_DIR>
 ```
 
 安装后找不到命令时，检查工具可执行文件目录：
@@ -161,11 +161,11 @@ uv tool uninstall local-knowledge-agent-cli
 不安装、直接从源码运行时，仍须通过 uv：
 
 ```bash
-uv run --python cpython-3.12.13 --no-python-downloads \
+uv run --python cpython-3.12 --managed-python --no-python-downloads \
   python -B <SKILL_DIR>/scripts/local_knowledge_agent.py --version
 ```
 
-不得直接使用 `python`、`python3`、`python3.12`、`py`、手动激活的虚拟环境或配置的解释器路径调用启动器。uv 或其管理的 CPython 3.12.13 不可用时，不替换运行时、不静默安装；提供供用户执行的指引，并继续使用纯 Skill。
+不得直接使用 `python`、`python3`、`python3.12`、`py`、手动激活的虚拟环境或配置的解释器路径调用启动器。uv 或其管理的 CPython 3.12.x 不可用时，不替换运行时、不静默安装；提供供用户执行的指引，并继续使用纯 Skill。
 
 ## CLI 命令
 

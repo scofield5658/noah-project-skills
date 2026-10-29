@@ -60,8 +60,8 @@
     },
     {
       "id": 8,
-      "prompt": "把 local-knowledge-agent 的程序给团队装好，统一 Python 3.12.13。",
-      "expected_output": "说明 uv tool install 的用户级影响、uv 管理的 CPython 3.12.13 和 uv_build 来源；确认后安装，不使用系统 Python，提供无下载模式、PATH 检查、卸载和纯 Skill 降级。",
+      "prompt": "把 local-knowledge-agent 的程序给团队装好，统一 Python 3.12.x。",
+      "expected_output": "说明 uv tool install 的用户级影响、uv 管理的 CPython 3.12.x 和 uv_build 来源；确认后安装，不使用系统 Python，提供无下载模式、PATH 检查、卸载和纯 Skill 降级。",
       "files": []
     },
     {
