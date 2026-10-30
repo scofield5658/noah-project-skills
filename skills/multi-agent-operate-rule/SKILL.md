@@ -93,6 +93,12 @@ description: Use when multiple agents or separate sessions must collaborate on o
 
 技能已被加载，只说明可以阅读这套规则。读写、执行和外部操作是否获准，另看任务说明里的允许动作。看不到对应授权，就不执行该动作。
 
+## 结论与证据的适用范围
+
+软件变更、测试或复核的派单与采用，按 [references/evidence-and-change.md](references/evidence-and-change.md) 核对结论、对象版本和实际证据。检查深度随影响和风险确定，不按文件数量判断，也不增加固定角色或逐阶段审批。缺口只阻断依赖它的动作。
+
+输入、代码或环境改变后，先说明旧证据为什么仍适用，再决定复用哪些结论、补查哪些关联路径。失败交回时区分已经观察到的现象和待验证的原因，由协调者安排有依据的下一步；不把所有失败都交给实现者改代码。
+
 ## 调度、角色与交接索引
 
 | 要做的事 | 执行步骤 | 模板 |
@@ -102,6 +108,7 @@ description: Use when multiple agents or separate sessions must collaborate on o
 | 交接：固定输入、候选发布和接收回执 | [references/handoff-and-fixed-input.md](references/handoff-and-fixed-input.md) | 成果交付、交接记录 |
 | 人工决定：请求、核验、消费和接续 | [references/human-decision.md](references/human-decision.md) | 人工决定请求 |
 | 恢复：未知结果、失败、取消和重复事件 | [references/recovery-and-reconciliation.md](references/recovery-and-reconciliation.md) | 恢复检查点 |
+| 质量：开工依据、结论覆盖、变更影响和返工对象 | [references/evidence-and-change.md](references/evidence-and-change.md) | 证据清单 |
 | 宿主有哪些能力、人工中转如何标明 | [references/platform-adaptation.md](references/platform-adaptation.md) | — |
 
 字段模板见 [references/templates.md](references/templates.md)。不依赖内部系统即可复现的示例见 [references/worked-example.md](references/worked-example.md)。
