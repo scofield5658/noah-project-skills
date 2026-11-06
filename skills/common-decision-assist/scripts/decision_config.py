@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 import json
 import math
+import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import sys
 from urllib.parse import urlsplit
@@ -12,6 +13,14 @@ from decision_capabilities import get_capabilities
 
 MAX_BYTES = 1024 * 1024
 SCHEMA_VERSION = "decision-assist/v1"
+ENV_FIELDS = {
+    "protocol": "COMMON_DECISION_ASSIST_PROTOCOL",
+    "url": "COMMON_DECISION_ASSIST_URL",
+    "token": "COMMON_DECISION_ASSIST_TOKEN",
+    "model": "COMMON_DECISION_ASSIST_MODEL",
+    "timeout_seconds": "COMMON_DECISION_ASSIST_TIMEOUT_SECONDS",
+    "request_budget_seconds": "COMMON_DECISION_ASSIST_REQUEST_BUDGET_SECONDS",
+}
 
 
 class DecisionError(Exception):
@@ -147,9 +156,36 @@ class RuntimeConfig:
         }
 
 
+def _load_environment(profile):
+    """Treat the injected connection as a whole; never borrow file credentials."""
+    guidance = {
+        "config_source": "environment",
+        "next_steps": [
+            "Inject protocol, URL, Token and model using COMMON_DECISION_ASSIST_* variables; do not send credentials in chat.",
+            "Select the authorized environment with --profile test or --profile prod, then run doctor again.",
+        ],
+    }
+    if profile is None:
+        raise DecisionError("PROFILE_REQUIRED", "Environment configuration requires an explicit --profile test or prod.",
+                            available_profiles=["test", "prod"], **guidance)
+    if profile not in ("test", "prod"):
+        raise DecisionError("CONFIG_ERROR", "Selected profile must be test or prod.", **guidance)
+    entry = {key: os.environ.get(ENV_FIELDS[key], "").strip() for key in ("protocol", "url", "token", "model")}
+    missing = [ENV_FIELDS[key] for key, value in entry.items() if not value]
+    if missing:
+        raise DecisionError("CONFIG_ERROR", "Injected connection is incomplete; no file fallback was attempted.",
+                            profile=profile, missing=missing, **guidance)
+    data = {"profiles": {profile: entry}}
+    for key in ("timeout_seconds", "request_budget_seconds"):
+        if ENV_FIELDS[key] in os.environ:
+            data[key] = os.environ[ENV_FIELDS[key]]
+    return data
+
+
 def resolve_config(profile=None, config_path=None):
     path = str(Path(config_path).expanduser().resolve()) if config_path is not None else default_config_path()
-    config_source = "argument" if config_path is not None else "default"
+    config_source = ("argument" if config_path is not None else
+                     "environment" if any(name in os.environ for name in ENV_FIELDS.values()) else "default")
     guidance = {
         "config_path": path,
         "config_template": str(Path(__file__).resolve().parents[1] / "assets" / "config.example.json"),
@@ -160,9 +196,11 @@ def resolve_config(profile=None, config_path=None):
         ],
     }
     try:
-        data = _load_file(path) if config_source != "default" or Path(path).exists() else {}
+        data = (_load_environment(profile) if config_source == "environment" else
+                _load_file(path) if config_source != "default" or Path(path).exists() else {})
     except DecisionError as error:
-        error.details.update(guidance)
+        if config_source != "environment":
+            error.details.update(guidance)
         raise
     profiles, readiness, secrets = {}, {}, []
     for name in ("test", "prod"):

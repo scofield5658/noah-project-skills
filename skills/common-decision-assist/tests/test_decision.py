@@ -270,6 +270,108 @@ class ConfigTests(CLIBase):
             self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
 
 
+class EnvironmentConfigTests(CLIBase):
+    def setUp(self):
+        super().setUp()
+        self.config = None
+        self.injected = {
+            "COMMON_DECISION_ASSIST_PROTOCOL": "systemone",
+            "COMMON_DECISION_ASSIST_URL": "https://environment.invalid/api",
+            "COMMON_DECISION_ASSIST_TOKEN": "fake-environment-credential",
+            "COMMON_DECISION_ASSIST_MODEL": "environment-model",
+        }
+        self.env.update(self.injected)
+
+    def test_environment_needs_no_file_and_does_not_disclose_connection(self):
+        for profile in ("test", "prod"):
+            code, result = self.invoke("doctor", "--profile", profile)
+            self.assertEqual((code, result["status"], result["profile"], result["config_source"]),
+                             (0, "READY", profile, "environment"))
+            self.assertEqual(result["model"], "environment-model")
+            self.assertFalse(result["network_checked"])
+            output = json.dumps(result)
+            self.assertNotIn(self.injected["COMMON_DECISION_ASSIST_TOKEN"], output)
+            self.assertNotIn("environment.invalid", output)
+        self.assertFalse(self.default_path.parent.exists())
+
+    def test_environment_requires_explicit_profile(self):
+        code, result = self.invoke("doctor")
+        self.assertEqual((code, result["status"]), (2, "PROFILE_REQUIRED"))
+
+    def test_environment_ignores_default_file_even_when_malformed(self):
+        self.default_path.parent.mkdir(parents=True)
+        self.default_path.write_text("not json", encoding="utf-8")
+        code, result = self.invoke("doctor", "--profile", "prod")
+        self.assertEqual((code, result["model"], result["config_source"]),
+                         (0, "environment-model", "environment"))
+        self.assertEqual(self.default_path.read_text(), "not json")
+
+    def test_explicit_file_wins_even_with_incomplete_environment(self):
+        self.env["COMMON_DECISION_ASSIST_TOKEN"] = ""
+        path = self.write_config({"profiles": {"prod": {
+            "protocol": "systemone", "url": "https://file.invalid/api",
+            "token": "fake-file-credential", "model": "file-model"}}})
+        code, result = self.invoke("doctor", "--config", path)
+        self.assertEqual((code, result["model"], result["config_source"]), (0, "file-model", "argument"))
+        code, result = self.invoke("doctor", "--config", str(Path(self.temp.name) / "absent"))
+        self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+
+    def test_partial_or_empty_environment_never_borrows_file_fields(self):
+        self.config = {"profiles": {}}
+        self.configured("prod")
+        for variable in self.injected:
+            for empty in (None, "", "   "):
+                with self.subTest(variable=variable, empty=empty):
+                    self.env.update(self.injected)
+                    if empty is None:
+                        self.env.pop(variable)
+                    else:
+                        self.env[variable] = empty
+                    code, result = self.invoke("doctor", "--profile", "prod")
+                    self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+                    self.assertIn(variable, result["error"]["missing"])
+
+    def test_optional_environment_parameters_use_existing_validation(self):
+        for name, field in (("COMMON_DECISION_ASSIST_TIMEOUT_SECONDS", "timeout_seconds"),
+                            ("COMMON_DECISION_ASSIST_REQUEST_BUDGET_SECONDS", "request_budget_seconds")):
+            self.env[name] = "2.5"
+            code, result = self.invoke("doctor", "--profile", "prod")
+            self.assertEqual((code, result[field]), (0, 2.5))
+            for invalid in ("", "NaN", "inf", "0", "301", "bad"):
+                self.env[name] = invalid
+                code, result = self.invoke("doctor", "--profile", "prod")
+                self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+            self.env.pop(name)
+
+    def test_environment_validation_and_capabilities_remain_offline(self):
+        for name, invalid in (("COMMON_DECISION_ASSIST_PROTOCOL", "unknown"),
+                              ("COMMON_DECISION_ASSIST_URL", "https://user:pass@invalid/api"),
+                              ("COMMON_DECISION_ASSIST_TOKEN", "secret\r\ninjected")):
+            self.env.update(self.injected)
+            self.env[name] = invalid
+            code, result = self.invoke("doctor", "--profile", "prod")
+            self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+            self.assertNotIn(invalid, json.dumps(result))
+        self.env["COMMON_DECISION_ASSIST_PROTOCOL"] = "openai"
+        self.env["COMMON_DECISION_ASSIST_MODEL"] = "gpt-6-luna"
+        self.env["COMMON_DECISION_ASSIST_TOKEN"] = self.injected["COMMON_DECISION_ASSIST_TOKEN"]
+        code, result = self.invoke("doctor", "--profile", "prod")
+        self.assertEqual((code, result["protocol"]), (0, "openai"))
+        self.env["COMMON_DECISION_ASSIST_PROTOCOL"] = "invalid"
+        code, result = self.invoke("capabilities", "--protocol", "systemone")
+        self.assertEqual((code, result["status"]), (0, "CAPABILITIES"))
+
+    def test_even_one_empty_recognized_variable_selects_environment_source(self):
+        self.config = {"profiles": {}}
+        self.configured("prod")
+        for variable in self.injected:
+            self.env.pop(variable)
+        self.env["COMMON_DECISION_ASSIST_TIMEOUT_SECONDS"] = ""
+        code, result = self.invoke("doctor", "--profile", "prod")
+        self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+        self.assertIn("COMMON_DECISION_ASSIST_TOKEN", result["error"]["missing"])
+
+
 class HTTPBase(CLIBase):
     @classmethod
     def setUpClass(cls):
@@ -331,6 +433,23 @@ class HTTPBase(CLIBase):
         return f"http://127.0.0.1:{self.server.server_port}{path}"
 
 class LocalServerTests(HTTPBase):
+    def test_injected_connection_calls_once_without_a_config_file(self):
+        self.config = None
+        self.env.update(COMMON_DECISION_ASSIST_PROTOCOL="systemone",
+                        COMMON_DECISION_ASSIST_URL=self.url("/environment"),
+                        COMMON_DECISION_ASSIST_TOKEN="fake-environment-credential",
+                        COMMON_DECISION_ASSIST_MODEL="environment-model")
+        code, result = self.invoke("decide", "--profile", "prod", payload=PAYLOAD)
+        self.assertEqual((code, result["status"], result["model"]), (0, "DECIDED", "environment-model"))
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.calls[0]["path"], "/environment")
+        self.assertEqual(self.calls[0]["authorization"], "Bearer fake-environment-credential")
+        self.assertFalse(self.default_path.parent.exists())
+        self.env["COMMON_DECISION_ASSIST_TOKEN"] = ""
+        code, result = self.invoke("decide", "--profile", "prod", payload=PAYLOAD)
+        self.assertEqual((code, result["status"]), (2, "CONFIG_ERROR"))
+        self.assertEqual(len(self.calls), 1, "Incomplete injection must fail before transport")
+
     def test_success_uses_selected_credentials_and_preserves_context(self):
         self.configured("prod", self.url("/prod"))
         code, result = self.invoke("decide", "--profile", "test", payload=PAYLOAD)

@@ -13,12 +13,12 @@
     },
     {
       "id": 2,
-      "prompt": "我没有配置文件，请开始调用决策服务。",
-      "expected_output": "在实际执行环境运行 doctor，根据返回的配置路径、模板和缺失字段引导用户只补齐一套 protocol/url/token/model；不扫描仓库、不自动创建凭据文件、不要求用户在聊天中发送 Token。",
+      "prompt": "我没有配置文件，也未注入连接环境变量，请开始调用决策服务。",
+      "expected_output": "doctor 报告 CONFIG_ERROR；说明可通过整套 COMMON_DECISION_ASSIST_* 环境变量或本地 JSON 二选一补齐协议、URL、Token、模型，不要求将凭据发入聊天，不自动配置或调用服务。",
       "files": [],
       "expectations": [
-        "未执行 API 时不伪称服务已判断",
-        "配置在用户主目录的 .config/common-decision-assist/config.json"
+        "支持环境变量或用户主目录配置文件二选一",
+        "不猜测协议、地址、凭据或模型"
       ]
     },
     {
@@ -166,6 +166,18 @@
       "id": 19,
       "prompt": "我旧配置只有 url/token/model，能默认 systemone 继续吗？",
       "expected_output": "报告缺少必填 protocol 并引导本地补齐 systemone 或 openai，不猜协议，不自动修改凭据或切换环境。",
+      "files": []
+    },
+    {
+      "id": 20,
+      "prompt": "容器已注入四项 COMMON_DECISION_ASSIST_PROTOCOL/URL/TOKEN/MODEL，没有 config.json，已明确使用 test。请自检。",
+      "expected_output": "运行 doctor --profile test；无需先创建配置文件，自检不联网、不输出凭据；明确环境变量整套加载。",
+      "files": []
+    },
+    {
+      "id": 21,
+      "prompt": "默认文件完整，但环境变量只设置了 COMMON_DECISION_ASSIST_URL。能借用文件的 Token 吗？",
+      "expected_output": "不混用；缺项时 CONFIG_ERROR 并列出缺失变量名，不读取默认文件补齐、不联网。显式 --config 时整套改用该文件。",
       "files": []
     }
   ]

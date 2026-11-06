@@ -24,7 +24,7 @@ def call_with_budget(config, payload, execution):
     try:
         process = subprocess.Popen(
             [sys.executable, "-B", str(Path(__file__).resolve())],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
         )
     except OSError:
         raise DecisionError("INTERNAL_ERROR", "Cannot start the bounded decision transport.", 7) from None

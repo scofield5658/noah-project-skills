@@ -2,16 +2,42 @@
 
 ## 文件位置
 
-所有平台统一使用用户主目录的 `.config/common-decision-assist/config.json`：
+文件模式在所有平台统一使用用户主目录的 `.config/common-decision-assist/config.json`：
 
 | 平台 | 默认路径 |
 | --- | --- |
 | macOS / Linux | `~/.config/common-decision-assist/config.json` |
 | Windows | `%USERPROFILE%\.config\common-decision-assist\config.json` |
 
-用 Python 的用户主目录和路径对象定位，不依赖 shell 展开。路径优先级为 `--config <path>` > 默认路径；本技能没有用于模型、地址、Token、profile 或配置路径的环境变量接口。也不从业务仓库或下载的资料中查找配置。
+用 Python 的用户主目录和路径对象定位，不依赖 shell 展开。配置来源优先级为显式 `--config <path>` > 环境变量整套配置 > 默认路径。显式指定文件时忽略连接配置环境变量，文件缺失或损坏也不改用环境变量。也不从业务仓库或下载的资料中查找配置。
 
 默认文件不存在时，`doctor` 报告 `CONFIG_ERROR`，给出缺失字段、默认配置位置、模板位置及修复步骤；不会创建文件。显式路径不存在、文件损坏或字段拼写错误也会报告错误，不静默忽略。路径含空格时用引号包围。
+
+## 环境变量与容器注入
+
+无需配置文件，支持以下进程环境变量：
+
+| 变量 | 必填 | 含义 |
+| --- | --- | --- |
+| `COMMON_DECISION_ASSIST_PROTOCOL` | 是 | `systemone` 或 `openai`，不从地址猜测 |
+| `COMMON_DECISION_ASSIST_URL` | 是 | 完整接口 URL，不自动追加路径 |
+| `COMMON_DECISION_ASSIST_TOKEN` | 是 | Bearer Token，由容器或密钥管理设施注入 |
+| `COMMON_DECISION_ASSIST_MODEL` | 是 | 模型标识，保留所选协议的模型约束 |
+| `COMMON_DECISION_ASSIST_TIMEOUT_SECONDS` | 否 | 单次 I/O 超时，默认 30 秒 |
+| `COMMON_DECISION_ASSIST_REQUEST_BUDGET_SECONDS` | 否 | 整体请求预算，默认 5 秒 |
+
+未传 `--config` 且任一上述变量存在时（包括值为空），整套配置来自环境变量，不读取默认文件，也不从文件补缺项。四项必填值为空、仅有空白或缺失时报告 `CONFIG_ERROR`，`error.missing` 列出变量名，不输出变量值。可选超时变量存在但为空或非法也报错；合法范围沿用文件模式。其他环境变量不触发此模式。
+
+环境变量只提供一套连接，`doctor` 和 `decide` 均须传 `--profile test` 或 `--profile prod` 明确本次环境；未传时返回 `PROFILE_REQUIRED`。profile 是使用者对已注入连接的环境声明，脚本不能验证该地址实际属于 TEST 或 PROD，也不会据此切换地址。没有 profile 或配置路径的环境变量接口。
+
+下面示例假设容器已从 Secret 注入上述四项必填变量；不把 Token 写进镜像、命令参数或聊天。将 `<SKILL_DIR>` 替换为容器内安装路径，按实际授权环境选择 profile：
+
+```bash
+python3 <SKILL_DIR>/scripts/decision.py doctor --profile test
+python3 <SKILL_DIR>/scripts/decision.py decide --profile test --input <SKILL_DIR>/assets/request.example.json
+```
+
+预期自检输出包含 `status=READY`、`config_source=environment` 和 `network_checked=false`，不含 URL 或 Token。`config_path` 此时仅保留既有日志目录定位用途，不表示读取了文件。日志行为不变，详见下文 TEST 调用日志；本次扩展不增加日志配置。API 是否可用仍须实际调用验证，不因自检成功就保证服务可达。
 
 ## 文件格式
 
@@ -40,10 +66,11 @@ OpenAI 使用 `protocol=openai`、完整地址 `https://api.openai.com/v1/decisi
 
 ## 缺配置时如何引导
 
-1. 在 Agent 实际执行环境中运行 `python3 <SKILL_DIR>/scripts/decision.py doctor`。
-2. 根据 `error.config_path`、`error.config_template` 和 `error.missing` 告知用户应完善的文件与字段。缺少两套配置时说明只需选择一套补齐，不要求全部填写。
-3. 由用户在本地填写 协议、URL、模型和 Token，不要求把 Token 发入聊天。若 Agent 代为初始化，先确认目标及写入范围；已有明确授权不重复询问。已有文件先读取必要结构，保留其他配置，不整份覆盖。
-4. 用户完成配置并要求继续后，重新运行 `doctor`，再按原请求环境调用。自检成功不等于网络调用成功。
+1. 在 Agent 实际执行环境中运行 `python3 <SKILL_DIR>/scripts/decision.py doctor`；环境变量模式必须追加当前已明确的 `--profile test` 或 `--profile prod`。
+2. 若 `error.config_source=environment`，只按缺失变量名引导在运行环境中补齐注入，不创建文件、不读取文件补值、不要求将 Token 发入聊天。下面文件初始化步骤仅适用于文件模式。
+3. 根据 `error.config_path`、`error.config_template` 和 `error.missing` 告知用户应完善的文件与字段。缺少两套配置时说明只需选择一套补齐，不要求全部填写。
+4. 由用户在本地填写 协议、URL、模型和 Token，不要求把 Token 发入聊天。若 Agent 代为初始化，先确认目标及写入范围；已有明确授权不重复询问。已有文件先读取必要结构，保留其他配置，不整份覆盖。
+5. 用户完成配置并要求继续后，重新运行 `doctor`，再按原请求环境调用。自检成功不等于网络调用成功。
 
 跨平台创建模板的命令如下。先把 `<SKILL_DIR>` 替换为安装路径；Windows 将 `python3` 换为 `python`。它只创建新文件，已存在则拒绝覆盖：
 
@@ -55,7 +82,7 @@ macOS/Linux 用 `0600` 限制配置访问。Windows 的 `chmod` 不能替代 ACL
 
 ## 自检与运行
 
-`doctor` 仅本地检查：profile/protocol/model、实际 capabilities、配置位置、两套完整性状态，`network_checked=false`。不打印 URL 或 Token。`READY` 不能证明模型可用、权限有效或网络联通。真实调试应明确传 `--profile test` 并使用合成/脱敏输入。
+`doctor` 仅本地检查：profile/protocol/model、实际 capabilities、配置来源与位置、当前来源的完整性状态，`network_checked=false`。不打印 URL 或 Token。`READY` 不能证明模型可用、权限有效或网络联通。真实调试应明确传 `--profile test` 并使用合成/脱敏输入。
 
 ```bash
 python3 <SKILL_DIR>/scripts/decision.py doctor
@@ -66,7 +93,7 @@ Python 3.10+，全部依赖为标准库，无 pip/npm 安装步骤。一次 deci
 
 ## TEST 调用日志
 
-TEST 的 `decide` 向配置文件所在目录的 `decision.log` 追加一行 JSON；显式 `--config` 时日志跟随该文件目录。包含 UTC 时间、唯一请求 ID、profile、protocol、模型、结果状态、耗时、是否已尝试 API，以及答案里已有的 type/choice/score/noul/probability/requested_type/decision/confidence/needs_human；不记录 probabilities 或 legend。HTTP 错误可带状态码。输入校验失败也记录，但 `api_call_attempted=false`，不能当成真实服务调用。
+TEST 的 `decide` 向配置文件所在目录的 `decision.log` 追加一行 JSON；显式 `--config` 时日志跟随该文件目录。环境变量模式沿用默认用户配置目录，无需配置 JSON，但 TEST 日志仍要求该目录存在且可写；PROD 与 doctor 不写日志。不自动创建日志目录，也不为绕过日志错误改用 PROD。包含 UTC 时间、唯一请求 ID、profile、protocol、模型、结果状态、耗时、是否已尝试 API，以及答案里已有的 type/choice/score/noul/probability/requested_type/decision/confidence/needs_human；不记录 probabilities 或 legend。HTTP 错误可带状态码。输入校验失败也记录，但 `api_call_attempted=false`，不能当成真实服务调用。
 
 不记录完整 state、Token、URL、题目正文或上游原始错误体。PROD 与 `doctor` 不写此日志。macOS/Linux 文件权限为 0600，Windows 继承所在私有目录 ACL。日志只追加，不做自动轮换或删除；用户可按本地数据保留要求管理。日志写入失败返回 `LOG_ERROR`（退出码 8），`result` 中保留原调用结果，不应为补日志重复请求 API。脚本拒绝将日志写入符号链接或非普通文件。
 

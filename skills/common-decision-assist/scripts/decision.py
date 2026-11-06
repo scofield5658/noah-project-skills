@@ -27,8 +27,8 @@ def _parser():
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("doctor", "decide"):
         command = commands.add_parser(name, help="Local config checks only" if name == "doctor" else "Send one decision request")
-        command.add_argument("--profile", choices=("test", "prod"), help="User-selected environment; required if both are configured")
-        command.add_argument("--config", help="Local JSON config; defaults to ~/.config/common-decision-assist/config.json")
+        command.add_argument("--profile", choices=("test", "prod"), help="User-selected environment; required for injected config or two complete file profiles")
+        command.add_argument("--config", help="Explicit JSON file (ignores environment config); otherwise use COMMON_DECISION_ASSIST_* or the default user file")
         if name == "decide":
             command.add_argument("--input", default="-", help="JSON file or '-' for stdin (default)")
             command.add_argument("--min-confidence", type=float, help="Optional conservative human-review threshold, 0..1")
