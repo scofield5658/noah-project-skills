@@ -2,6 +2,12 @@
 name: common-decision-assist
 description: Use when 需要通过 systemone/openai 文本决策接口进行有限选项选择、有序评分或命题概率判断；不用于开放式探索和确定性计算。
 metadata:
+  permissions:
+    - file_read
+    - file_write
+    - network
+    - shell
+    - env
   compatibility: Requires Python 3.10+ and network access to a user-authorized Decision API endpoint. Reads explicit input and connection configuration; TEST appends decision.log; runs a fixed Python worker without a shell.
   version: "0.5.1"
 ---
@@ -18,7 +24,7 @@ metadata:
 - 传输数据：包含必要的 `state`、题目、选项/量规、模型标识；Bearer Token 仅置于所选端点的 Authorization 头，不进入模型输入、输出和日志。用户须确认服务接收方与数据范围，联网许可不等于向任意第三方提交敏感数据的许可。
 - 环境变量：仅通过 `COMMON_DECISION_ASSIST_*` 读取显式注入的连接配置；不遍历其他环境密钥。变量名、来源优先级和缺失处理见配置说明。
 - 文件：只读明确输入和连接配置；TEST 的 `decide` 仅追加配置目录中的 `decision.log`。日志含题目 ID、选项 ID、模型及数值摘要，标识本身也须脱敏。PROD、doctor 不写日志。
-- 子进程：当前 Python 解释器只启动同目录固定的 `decision_transport.py`；参数数组、`shell=False`，不接受用户命令或 worker 路径。连接配置及请求通过 stdin 传递，超时终止并回收；不能移除该机制后仍声称具备整体超时保证。
+- 子进程：权限清单中的 `shell` 仅声明固定 Python worker 的启动能力，不表示经过 Shell，也不授予任意命令执行权限。当前 Python 解释器只启动同目录固定的 `decision_transport.py`；参数数组、`shell=False`，不接受用户命令或 worker 路径。连接配置及请求通过 stdin 传递，超时终止并回收；不能移除该机制后仍声称具备整体超时保证。
 - 信任边界：Python、技能安装目录和启动环境须可信。本技能未实现操作系统沙箱或端点域名白名单，部署方需通过文件权限和网络出口策略约束运行范围。HTTP 仅适用于已授权受控网络；HTTPS 保留证书校验，不跟随重定向、不隐式使用代理。
 
 OpenAI 模型限制是本版适配器的兼容约束；未经契约验证不自动开放其他模型。技能包不携带真实凭据。
