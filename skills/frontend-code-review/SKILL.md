@@ -1,29 +1,29 @@
 ---
 name: frontend-code-review
-metadata: {version: "0.1.0"}
-description: Use when 用户要求对 Java、Python、Golang、Node.js、传统 Web、React、Vue 或 Next.js 的具体代码变更执行 review code、code review、CR、合并前检查或代码审查；不用于没有具体代码变更的产品设计或方案设计。
+metadata: {version: "0.2.0"}
+description: Use when 用户要求审查传统 Web、React、Vue、Next.js 或同类前端界面与客户端逻辑的具体代码变更，包括 review code、code review、CR、合并前检查或代码审查；不用于 Java、Python、Golang、服务端接口、数据库或持久化变更，也不用于没有具体代码变更的产品设计或方案设计。
 ---
 
 # 前端代码审查
 
 ## 定位
 
-这是一套给前端工程组使用的代码审查标准。审查时先看项目一致性，再补充正确性、安全性和可维护性判断。
+这是一套给前端工程组使用的代码审查标准，只覆盖界面、样式、组件、hook 和客户端逻辑。审查时先看项目一致性，再补充正确性、安全性和可维护性判断。服务端接口、数据库、持久化，以及 Java、Python、Golang 业务实现不在本技能范围内。
 
 不要把普通审查变成大重构建议。除非用户明确说这是一次技术重构，否则只提和当前改动闭环相关的问题。
 
 ## 本地环境依赖
 
-本 skill 本身是规则型 code review 标准，无固定本地运行时依赖，不要求安装特定 Node、Java、Python、Golang、lint 或测试工具。
+本 skill 本身是前端代码审查标准，无固定本地运行时依赖，不要求安装特定 Node、lint 或测试工具。
 
 | 依赖 | 必选 | 用途 | 检查方式 | 缺失时处理 |
 | --- | --- | --- | --- | --- |
 | 可读取的代码变更 | 是 | 明确本次审查对象 | 本地 diff、文件片段、PR 内容或用户粘贴内容 | 若无法读取，要求用户提供 diff、文件片段或 PR 内容 |
 | 项目上下文 | 强烈建议 | 判断项目规范、复用路径、命名习惯和分层方式 | 读取相邻文件、项目文档、配置和既有实现 | 缺失时说明审查基于有限上下文，避免强推项目风格结论 |
 | Git / diff | 可选 | 获取本地变更和上下文 | `git status`、`git diff` 或用户提供的补充 | 不可用时不阻塞，改用用户提供的变更内容 |
-| 目标项目测试/构建/lint 命令 | 可选 | 验证高风险结论或复现问题 | 以目标项目 README、package scripts、Maven/Gradle、Makefile 等为准 | 未确认前不引入新工具链；无法执行时在审查中说明验证缺口 |
+| 目标项目测试/构建/lint 命令 | 可选 | 验证高风险结论或复现问题 | 以目标项目 README、package scripts 或其他已有前端命令为准 | 未确认前不引入新工具链；无法执行时在审查中说明验证缺口 |
 
-测试、构建、lint、类型检查只依赖目标项目已有命令。不要因为使用本 skill 而新增工具链要求，也不要在未确认项目约定前要求安装新的 npm、Java、Python 或 Golang 依赖。
+测试、构建、lint、类型检查只依赖目标项目已有命令。不要因为使用本 skill 而新增工具链要求，也不要在未确认项目约定前要求安装新的 npm 依赖。
 
 ## 审查立场
 
@@ -39,7 +39,7 @@ description: Use when 用户要求对 Java、Python、Golang、Node.js、传统 
 
 - 先看变更文件和周边实现，再判断风格或结构问题。
 - 查项目里是否已有组件、工具函数、hook、service、wrapper 或同类模式可以复用。
-- 判断本次变更主要是前端还是后端，按对应规则审查。
+- 若变更主体是服务端接口、数据库、持久化或非界面业务实现，停止使用本技能，并说明它只覆盖前端界面和客户端逻辑。
 
 ### 2. 先看五个主标准
 
@@ -69,7 +69,7 @@ description: Use when 用户要求对 Java、Python、Golang、Node.js、传统 
 
 - 当前 skill 或 reference 还没有实质覆盖。
 - 能抽象成稳定的审查启发，而不是一次性意见。
-- 能复用于同类项目，例如常见前端项目或常见后端项目。
+- 能复用于同类前端项目。
 - 不依赖某个项目的业务规则、临时绕法、组织流程或一次事故。
 - 加进去后确实能提升后续类似审查的质量。
 
@@ -133,18 +133,6 @@ description: Use when 用户要求对 Java、Python、Golang、Node.js、传统 
 
 更多细节读取 `references/frontend-review.md`。
 
-## 后端审查规则
-
-后端项目要更关注测试、持久化和接口契约。
-
-- 改到业务逻辑、分支或可复用函数时，看单测是否覆盖了新增行为。
-- 数据库字段变更要看是否必要，是否影响上下游。
-- 接口字段要看是否冗余、过宽，是否和当前契约一致。
-- schema、API、service 变更要跟随项目既有分层和命名，不要单独开一套风格。
-- 不必要的数据库字段扩展、接口语义重复、高风险逻辑无测试，都应作为审查问题。
-
-更多细节读取 `references/backend-review.md`。
-
 ## 结果归类
 
 ### Blocking
@@ -199,7 +187,7 @@ description: Use when 用户要求对 Java、Python、Golang、Node.js、传统 
 ## Skill Evolution Suggestion
 - 这条审查意见目前没有被 `frontend-code-review` 充分覆盖，但看起来可以复用
 - 建议抽象为：...
-- 适用范围：frontend / backend / both
+- 适用范围：前端界面或客户端逻辑
 - 是否要我把它加入本 skill，作为后续默认审查规则？
 ```
 
@@ -207,7 +195,8 @@ description: Use when 用户要求对 Java、Python、Golang、Node.js、传统 
 
 ## 默认边界
 
-- 只用于支持栈的代码审查：Java、Python、Golang、Node.js，以及传统 Web、React、Vue、Next.js 等前端栈。
+- 只审查传统 Web、React、Vue、Next.js，以及同类前端界面、样式、组件、hook 和客户端数据转换。
+- 同一仓库中的服务端路由、数据库、schema、持久化，以及 Java、Python、Golang 业务代码不触发本技能。
 - 其他技术栈不触发本技能，交给更合适的 skill 或通用审查处理。
 - 只审查具体代码变更，不扩展到方案设计、发布治理或产品设计。
 - 没有具体代码审查对象时，不把本技能当成方案设计工具。
@@ -217,8 +206,9 @@ description: Use when 用户要求对 Java、Python、Golang、Node.js、传统 
 
 ## Skill 维护规则
 
-- 跨项目通用的审查启发放在主 `SKILL.md`。
-- 仅前端或仅后端适用的规则放到对应 reference。
+- 跨项目通用的前端审查启发放在主 `SKILL.md`。
+- 前端细则放到 `references/frontend-review.md`。
+- 不要把服务端、数据库或持久化审查规则写回本技能。
 - 新规则要抽象、稳定、可复用；不要写进项目名、内部业务术语或一次性历史事故。
 - 基于真实审查对话更新 skill 前，需要先得到用户确认。
 
