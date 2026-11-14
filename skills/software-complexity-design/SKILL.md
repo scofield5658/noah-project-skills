@@ -54,7 +54,7 @@ description: "Use when 用户需要设计或评审跨模块、跨系统或长链
 - Confluence/Wiki 发布、Mermaid 渲染、附件上传。
 - 代码修改和实施任务拆解。
 
-这些阶段按用户请求由当前环境中可用的对应能力承接：前端方案可使用 `frontend-technical-solution-writer`，代码审查可使用 `frontend-code-review`；详细设计、开发、测试和 Wiki 发布按所在团队已授权的工具执行。它们不是本技能的必装依赖，缺失时仍可交付架构材料，不自行安装或发布。
+这些阶段按用户请求由当前环境中可用的对应能力承接：前端方案可使用 `frontend-technical-solution-writer`，前端代码审查可使用 `frontend-code-review`；详细设计、开发、测试和 Wiki 发布按所在团队已授权的工具执行。它们不是本技能的必装依赖，缺失时仍可交付架构材料，不自行安装或发布。
 
 架构阶段先确定模块边界、状态与数据所有权、恢复责任和候选接口行为，不能用 TDD 循环替代这些取舍。实现阶段若选择 TDD，由第三方 `test-driven-development` skill 承接；不采用 TDD 时，后续实施仍要给出相应验证证据。
 

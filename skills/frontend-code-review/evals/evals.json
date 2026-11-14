@@ -16,7 +16,7 @@
     {
       "id": 3,
       "prompt": "请审查这个 API 和数据库字段改动",
-      "expected_output": "按后端改动审查，重点看单测覆盖、数据库字段必要性和影响面，以及 API 字段是否冗余。",
+      "expected_output": "不启动 frontend-code-review。该请求是服务端接口和数据库变更，交给通用或后端审查处理。",
       "files": []
     }
   ]
