@@ -1,0 +1,7 @@
+interface:
+  display_name: "专业用户界面与文档设计"
+  short_description: "为专业客户和内部业务系统用户设计界面，并用同一套判断编写 Word 文档与 PPT"
+  default_prompt: "使用 $frontend-ui-designer 在项目已有规范下设计或改进这个界面；需要文档或幻灯片时，沿用同一套判断给出样式约定和大纲。"
+
+policy:
+  allow_implicit_invocation: true
