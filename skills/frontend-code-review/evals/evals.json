@@ -3,20 +3,68 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "请审查这次代码改动",
-      "expected_output": "按固定审查结构输出，优先看项目一致性、复用、命名和改动范围是否克制。",
+      "prompt": "请审查这次前端页面的代码改动。当前没有附代码、diff、PR 链接，也没有可读取的项目目录。",
+      "expected_output": "说明缺少审查对象，请用户提供可读取的代码或变更材料；不虚构 findings，不输出 Pass，不声称已完成审查。",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "帮我看一下这个 React 组件改动有没有问题",
-      "expected_output": "按前端改动审查，重点看函数行为、组件使用习惯、props 注入、callback 契约和是否有多余层级。",
+      "prompt": "请审查 React 列表组件改动：按钮原来 onClick={() => onSelect(row.id)}，现在变为 onClick={onSelect}。父组件仍用 onSelect(id) 按字符串 ID 查找数据。",
+      "expected_output": "指出 callback 从业务 ID 变成点击事件，与父组件契约不兼容；给出位置、触发条件、影响和保留 ID 传参的最小修复方向，不只检查命名或组件风格。",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "请审查这个 API 和数据库字段改动",
-      "expected_output": "不启动 frontend-code-review。该请求是服务端接口和数据库变更，交给通用或后端审查处理。",
+      "prompt": "请审查独立 Node.js 服务的接口改动：GET /items 原来返回 {items: []}，现在改为直接返回数组，现有调用方仍读取 response.items。",
+      "expected_output": "使用 Node.js 后端规则审查，指出响应结构变更与现有调用方不兼容，说明影响并建议保持契约或同步调整调用方。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "请审查页面与 Node.js BFF 联动变更：BFF 返回值从 {items: rows} 改为 {data: rows}，页面仍对 response.items.map(renderRow) 求值，没有兼容层。",
+      "expected_output": "沿页面与 BFF 实际契约指出字段不兼容导致运行时错误，作为同一问题报告，给出两端位置和最小修复方向，避免重复 findings。",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "请只审查 Node.js 接口改动：上游请求失败时，原来 next(err)，现在 catch(err) { res.json({items: []}); }。接口约定失败返回 502 和错误码，空列表仅代表查询成功但没有数据。",
+      "expected_output": "使用 Node.js 规则，指出错误被转成成功空列表，破坏失败契约，归为 Blocking；建议保留项目统一错误处理，并验证失败响应与成功空列表的区别。",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "请审查搜索逻辑。原实现用 requestId 丢弃过期响应，现在改成 async function search(q) { const rows = await api.search(q); setRows(rows); }。每次输入变化都会调用 search，需求是始终展示最新关键词的结果，api 不保证响应顺序。",
+      "expected_output": "指出先发请求后返回时会覆盖最新结果的 Blocking，给出具体交错顺序和最小修复方向；按证据说明是否实际验证，不能只讨论函数命名。",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "请审查 Node.js 文档读取接口。中间件验证用户已登录。改动将 findOne({id: req.params.id, ownerId: req.user.id}) 替换为 findOne({id: req.params.id})，随后直接返回文档。接口只允许读取自己的文档，没有其他授权检查。",
+      "expected_output": "指出删除对象归属约束导致越权读取的 Blocking，说明登录校验不能替代对象授权，给出保留归属条件的最小修复。",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "请审查工具函数改动：total(items = []) 原来 return items.reduce((s, x) => s + x.price)，现在增加初值 0。约定价格为有限数值，空数组和省略参数返回 0，现有调用方均符合约定。只提供了这个片段，没有运行环境。",
+      "expected_output": "根据给定范围检查空数组、缺省参数和普通数组，未发现问题时给出 Pass，并明确仅静态审查、没有运行项目测试。不要求额外重构，不把缺少运行环境本身当作缺陷。",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "请审查新增函数 isReady(value) { if (value === true) return true; return false; }。它满足需求，项目允许这种写法，没有性能问题，也没有已有函数可复用。",
+      "expected_output": "可提出直接 return value === true 的 Suggestion，也可不报问题；不得因可简化而给 Needs confirmation 或 Blocking。",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "请审查分页参数改动：const limit = query.limit ?? 20 改为 const limit = query.limit || 20。query 已解析为数值，但没有资料说明 0 是否表示不限制。项目上下文不可读取。",
+      "expected_output": "指出 0 的处理发生变化；其业务含义缺失，归为 Needs confirmation，并明确需要确认的契约。不能自行认定 0 无效或宣称改动正确。",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "请审查 Node.js 任务提交接口。原实现 await enqueue(job) 成功后返回 202，本次删除 await，变成 enqueue(job); res.status(202).end();。enqueue 返回 Promise，拒绝代表任务未写入队列。契约要求仅在持久化成功后返回 202，没有其他错误处理。",
+      "expected_output": "指出提前返回成功和未处理异步拒绝，按已确认契约给 Blocking，建议恢复等待并沿项目机制处理失败，说明任务未入队却收到成功响应的影响。",
       "files": []
     }
   ]
