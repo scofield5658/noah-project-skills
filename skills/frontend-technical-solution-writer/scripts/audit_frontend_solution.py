@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""检查 Markdown 前端技术方案中的常见遗漏。"""
+"""检查使用随包模板的 Markdown 方案；结果不替代内容评审。"""
 
 from __future__ import annotations
 
@@ -191,10 +191,6 @@ ACCEPTANCE_CASE_KEYWORD_GROUPS = [
     ["前置条件", "准备条件"],
     ["操作步骤", "执行步骤", "操作流程"],
     ["预期结果", "预期表现", "期望结果"],
-    ["校验重点", "检查重点", "检查项"],
-    ["UI-", "UI_"],
-    ["API-", "API_"],
-    ["UT-", "UT_"],
 ]
 DESIGN_TOOL_MODEL_LABEL = "常规设计使用工具和模型"
 REVIEW_TOOL_MODEL_KEYWORDS = ["评审工具", "评审模型"]
@@ -341,6 +337,16 @@ def contains_any_group(text: str, keyword_groups: list[list[str]]) -> bool:
     return any(contains_any(text, group) for group in keyword_groups)
 
 
+def missing_elements(text: str, keyword_groups: list[list[str]]) -> list[str]:
+    return [group[0] for group in keyword_groups if not contains_any(text, group)]
+
+
+def section_not_applicable(text: str) -> bool:
+    # 仅整节声明可跳过要素检查；某个字段不适用不能豁免其他字段。
+    # 此处只核对声明格式，原因是否成立仍由内容评审判断。
+    return bool(re.fullmatch(r"(?:本节)?不适用[：:]\s*\S.*", text.strip()))
+
+
 def audit(path: Path) -> list[Finding]:
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
@@ -355,14 +361,16 @@ def audit(path: Path) -> list[Finding]:
             findings.append(Finding(priority, None, f"缺少必需章节：{heading}"))
 
     for heading in REQUIRED_HEADINGS:
-        body = section_body(visible, heading)
-        if not body:
+        if not has_heading(visible, heading):
             continue
+        body = section_body(visible, heading)
         content = meaningful_text(body)
-        first_line = body[0][0] if body else None
-        if heading in P0_HEADINGS and len(content) < 30 and "不适用" not in content:
+        first_line = body[0][0] if body else first_heading_line(visible, heading)
+        if section_not_applicable(content):
+            continue
+        if heading in P0_HEADINGS and len(content) < 30:
             findings.append(Finding("P0", first_line, f"核心章节内容过薄，无法支撑前端方案评审：{heading}"))
-        elif len(content) < 40 and "不适用" not in content:
+        elif len(content) < 40:
             findings.append(Finding("P1", first_line, f"章节内容过薄，可能缺少可评审细节：{heading}"))
 
     for heading in OPTIONAL_BUT_EXPECTED:
@@ -370,7 +378,7 @@ def audit(path: Path) -> list[Finding]:
             findings.append(Finding("P2", None, f"模板章节未出现；若不适用，请补充不适用说明：{heading}"))
 
     scope_text = meaningful_text(section_body(visible, "### 2.1 改动范围"))
-    if scope_text and "不适用" not in scope_text:
+    if scope_text and not section_not_applicable(scope_text):
         missing_buckets = []
         for bucket_group in SCOPE_BUCKET_GROUPS:
             if not contains_any(scope_text, bucket_group):
@@ -379,16 +387,20 @@ def audit(path: Path) -> list[Finding]:
             findings.append(Finding("P0", None, f"改动范围未覆盖全部必填分类：{', '.join(missing_buckets)}"))
 
     contract_text = meaningful_text(section_body(visible, "### 3.4 字段清洗、转换与前后端契约对齐（如适用）"))
-    if contract_text and "不适用" not in contract_text and not contains_any_group(contract_text, FIELD_CONTRACT_KEYWORD_GROUPS):
-        findings.append(Finding("P0", None, "字段清洗、转换与前后端契约章节缺少字段来源、转换规则或提供方/消费方说明"))
+    if contract_text and not section_not_applicable(contract_text):
+        missing = missing_elements(contract_text, FIELD_CONTRACT_KEYWORD_GROUPS)
+        if missing:
+            findings.append(Finding("P0", None, f"字段契约章节缺少要素：{', '.join(missing)}"))
 
     acceptance_method_text = meaningful_text(section_body(visible, "### 5.1 验收方式"))
     if acceptance_method_text and not contains_any_group(acceptance_method_text, ACCEPTANCE_METHOD_KEYWORD_GROUPS):
         findings.append(Finding("P0", None, "验收方式缺少可执行工具或方法，例如 chrome-devtools、自动化脚本、单元测试或冒烟"))
 
     acceptance_case_text = meaningful_text(section_body(visible, "### 5.2 验收用例"))
-    if acceptance_case_text and not contains_any_group(acceptance_case_text, ACCEPTANCE_CASE_KEYWORD_GROUPS):
-        findings.append(Finding("P0", None, "验收用例缺少前置条件、操作步骤、预期结果或契约校验重点"))
+    if acceptance_case_text:
+        missing = missing_elements(acceptance_case_text, ACCEPTANCE_CASE_KEYWORD_GROUPS)
+        if missing:
+            findings.append(Finding("P0", None, f"验收用例缺少要素：{', '.join(missing)}"))
 
     if DESIGN_TOOL_MODEL_LABEL not in text:
         findings.append(Finding("P1", None, "缺少常规设计使用工具和模型登记"))
@@ -418,6 +430,7 @@ def audit(path: Path) -> list[Finding]:
 
 def print_report(path: Path, findings: list[Finding]) -> None:
     print(f"# 前端技术方案遗漏检查报告\n\n文件：`{path}`\n")
+    print("范围：随包模板的结构与关键词检查，不证明内容完整、评审通过或残余风险已获接受。\n")
     if not findings:
         print("结果：未发现明显遗漏。仍建议人工复核牵涉范围、字段契约和关键交互验收路径。")
         return

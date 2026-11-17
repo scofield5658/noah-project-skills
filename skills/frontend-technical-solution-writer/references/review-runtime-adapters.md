@@ -82,7 +82,7 @@ mcp__codex__codex(
 ```
 mcp__codex__codex-reply(
   threadId: "<上一轮返回的 threadId>",
-  prompt: "我已根据你的反馈进行了修复。以下是修复内容：\n<修复列表>\n\n请以相同的对抗式立场重新评审。重点关注：\n1. 修复是否真正解决了报告的问题\n2. 修复是否引入了新问题\n\n以 VERDICT: APPROVED 或 VERDICT: REVISE 结束。"
+  prompt: "当前方案版本：<版本>\n当前完整方案：<全文或要求重新读取的文件路径>\n修复说明与问题台账：<修复列表和台账>\n请重新读取当前版本，核对修复与新增问题；以 VERDICT: APPROVED 或 VERDICT: REVISE 结束。"
 )
 ```
 
@@ -110,6 +110,7 @@ python3 "<SKILL_DIR>/scripts/run_readonly_review.py" --runtime claude --prompt-f
 
 - 本示例禁用内置工具与 MCP 工具，并用 `--bare` 跳过自动加载的 hooks、skills 和插件。必须确认当前版本和托管配置下这些限制生效；不支持或无法核实则跳过，不得仅靠 prompt 约束代替工具限制。
 - 每轮评审都是全新对话，后续轮次必须附带评审摘要和修复说明。
+- 每轮同时内联当前完整方案与版本，历史摘要不能替代本轮正文。
 - 如果常规设计已经使用 Claude 或同一模型，应优先选择其他运行时。
 - 失败时只记录经过脱敏的错误摘要；不要把原始 stderr 直接持久化或加入方案。
 
@@ -131,6 +132,7 @@ python3 "<SKILL_DIR>/scripts/run_readonly_review.py" --runtime codex --prompt-fi
 
 - 使用只读 sandbox 和 never approval；`--ignore-user-config` 跳过用户 config.toml，`--ignore-rules` 跳过 execpolicy 规则。这不是完整的 MCP、hooks 或项目/托管配置隔离，仍须核实实际加载的配置及工具权限。若组织模型端点依赖被跳过的配置，须使用已核实的只读评审配置；无法兼容时跳过，不能直接移除限制继续运行。
 - 每轮评审都是全新对话，后续轮次必须附带评审摘要和修复说明。
+- 每轮同时内联当前完整方案与版本，历史摘要不能替代本轮正文。
 - 如果常规设计已经使用 Codex 且模型相同，应优先选择 Claude CLI、Cursor CLI 或本地 Subagent。
 - 失败时只记录经过脱敏的错误摘要；不要把原始 stderr 直接持久化或加入方案。
 
@@ -152,7 +154,7 @@ python3 "<SKILL_DIR>/scripts/run_readonly_review.py" --runtime cursor --prompt-f
 
 ### 后续轮次
 
-本流程不使用 Cursor 的会话恢复能力。每轮评审是全新对话，必须在提示词中附带：
+本流程不使用 Cursor 的会话恢复能力。每轮内联当前完整方案与版本，并附带以下历史材料：
 
 ```
 <review_history>
@@ -191,7 +193,7 @@ Agent(
 
 ### 后续轮次
 
-每轮创建新 Agent，无会话恢复。在提示词中附带评审历史：
+每轮创建新 Agent，无会话恢复。内联当前完整方案与版本，并附带评审历史：
 
 ```
 <review_history>
@@ -218,15 +220,17 @@ Agent(
 
 1. 读取评审结果。
 2. 查找**最后一个非空行**是否严格等于 `VERDICT: APPROVED` 或 `VERDICT: REVISE`。
-3. **APPROVED** → 评审通过，向用户展示结果。
+3. **APPROVED** → 当前版本独立评审通过，展示结果；按主文件 6.3 核对 medium 风险登记与用户接受，不直接等同定稿。
 4. **REVISE** → 基于发现修复方案，进入下一轮。
 5. 未找到裁定、出现多个 verdict 行（正文引用、示例、代码块不算） → 视为解析失败，要求评审者重新给出裁定，最多重试 1 次。
 6. 存在 high/critical finding 但 verdict 为 APPROVED → 视为矛盾，按 REVISE 处理并记录为评审异常。
-7. 达到最大轮数（5 轮）→ 报告未解决问题，由用户决定。
+7. 达到最大轮数（同一任务共 5 轮）仍无覆盖最终版本的有效批准 → 保持 draft，报告问题；不因切换阶段重置轮数。
+
+任何阶段的实质修订都按主文件 6.5 完成必要确认、遗漏检查及重新评审。纯文字或记录补录须核对含义未变，并记录与获评版本的差异。
 
 ## 运行时失败与降级
 
-任一运行时出现超时、非零退出码、空输出、无 verdict、网络错误或解析失败 → 视为当前运行时不可用，按优先级降级下一运行时重试。
+超时、非零退出码、空输出或网络错误时，直接降级下一运行时；缺失或无效裁定先纠正一次，仍失败再降级。一次纠正机会不因重复解析同一结果而重置。
 
 所有外部运行时与本地 Subagent 均失败时：
 
@@ -239,28 +243,24 @@ Agent(
 
 ```
 MAX_ROUNDS = 5
-round = 1
-verdict = "REVISE"
-
-while round <= MAX_ROUNDS and verdict == "REVISE":
-    if round == 1:
-        prompt = 构建首轮评审提示词(方案内容)
-    else:
-        prompt = 构建后续评审提示词(修复摘要, 历史摘要)
-
-    result = 调用评审运行时(prompt)
-    展示评审结果给用户
-
-    verdict = 解析裁定(result)
-
+for round in 1..MAX_ROUNDS:
+    按项目要求处理必要确认，并对当前稿做遗漏检查
+    prompt = 构建评审提示词(当前完整方案, 当前版本, 修复摘要, 历史台账)
+    result = 调用并按上述上限纠正或降级(prompt)
+    if 所有运行时失败:
+        保持 draft/unreviewed 并退出
+    verdict = 严格解析裁定并核对 high/critical 矛盾
+    展示并登记本轮结果与版本
     if verdict == "REVISE":
-        基于发现修复方案
-        如果修复触及变更门禁领域：
-            回到用户复审阶段，取得确认后再继续
-        round += 1
-
-if round > MAX_ROUNDS:
-    报告未解决问题，保持 draft 状态
+        修订方案并按主文件 6.5 处理，继续下一轮
+    else:
+        完成最终遗漏检查
+        if 出现实质修订:
+            原批准不再覆盖当前稿，继续下一轮
+        核对所有未关闭 medium 已登记且获用户接受
+        核对关键缺口、项目必需验证和最终版本一致性
+        满足全部条件才定稿，否则保持 draft，退出循环
+循环耗尽仍未取得当前版本有效批准时，保持 draft
 ```
 
 ## 参数依据
